@@ -1,0 +1,24 @@
+# Official OpenSpades release (binaries and game data); download it separately
+/OpenSpades-0.1.3-Windows/
+
+# Local tooling, deployment and screenshots
+/.claude/
+/.wrangler/
+/deployment/
+/outputs/
+/review/
+
+# Dependencies, build output and logs
+node_modules/
+__pycache__/
+*.log
+/browser/build/
+/browser/logs/
+/browser/dist/assets/
+/browser/dist/engine/
+/browser/dist/vendor/
+/browser/dist/full/
+/browser/full/build/
+/browser/full/generated/
+/browser/full/resources/
+*.pak

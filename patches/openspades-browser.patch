@@ -1,0 +1,84 @@
+diff --git a/Sources/Client/Player.cpp b/Sources/Client/Player.cpp
+index 65c79b9..bede1f0 100644
+--- a/Sources/Client/Player.cpp
++++ b/Sources/Client/Player.cpp
+@@ -760,10 +760,12 @@ namespace spades {
+ 			}
+ 
+ 			// do hit test debugging
++#ifndef __EMSCRIPTEN__
+ 			auto *debugger = world.GetHitTestDebugger();
+ 			if (debugger && IsLocalPlayer()) {
+ 				debugger->SaveImage(playerHits, bulletVectors);
+ 			}
++#endif
+ 
+ 			// in AoS 0.75's way
+ 			Vector3 o = orientation;
+diff --git a/Sources/Client/World.cpp b/Sources/Client/World.cpp
+index 6e93b40..16879bc 100644
+--- a/Sources/Client/World.cpp
++++ b/Sources/Client/World.cpp
+@@ -38,7 +38,9 @@
+ #include <Core/IStream.h>
+ #include <Core/Settings.h>
+ 
++#ifndef __EMSCRIPTEN__
+ DEFINE_SPADES_SETTING(cg_debugHitTest, "0");
++#endif
+ 
+ namespace spades {
+ 	namespace client {
+@@ -103,7 +105,9 @@ namespace spades {
+ 			if (map == newMap)
+ 				return;
+ 
++#ifndef __EMSCRIPTEN__
+ 			hitTestDebugger.reset();
++#endif
+ 
+ 			if (map) {
+ 				mapWrapper.reset();
+@@ -468,12 +472,14 @@ namespace spades {
+ 		}
+ 
+ 		HitTestDebugger *World::GetHitTestDebugger() {
++#ifndef __EMSCRIPTEN__
+ 			if (cg_debugHitTest) {
+ 				if (hitTestDebugger == nullptr) {
+ 					hitTestDebugger = stmp::make_unique<HitTestDebugger>(this);
+ 				}
+ 				return hitTestDebugger.get();
+ 			}
++#endif
+ 			return nullptr;
+ 		}
+ 	} // namespace client
+diff --git a/Sources/Client/World.h b/Sources/Client/World.h
+index 869f0f7..2e93790 100644
+--- a/Sources/Client/World.h
++++ b/Sources/Client/World.h
+@@ -81,7 +81,9 @@ namespace spades {
+ 			stmp::optional<int> localPlayerIndex;
+ 
+ 			std::list<std::unique_ptr<Grenade>> grenades;
++#ifndef __EMSCRIPTEN__
+ 			std::unique_ptr<HitTestDebugger> hitTestDebugger;
++#endif
+ 
+ 			std::unordered_map<CellPos, spades::IntVector3, CellPosHash> createdBlocks;
+ 			std::unordered_set<CellPos, CellPosHash> destroyedBlocks;
+diff --git a/Sources/Core/RefCountedObject.cpp b/Sources/Core/RefCountedObject.cpp
+index 2d55cd9..01fa694 100644
+--- a/Sources/Core/RefCountedObject.cpp
++++ b/Sources/Core/RefCountedObject.cpp
+@@ -19,7 +19,9 @@
+  */
+ 
+ #include "RefCountedObject.h"
++#ifndef __EMSCRIPTEN__
+ #include <ScriptBindings/ScriptManager.h>
++#endif
+ #include "Exception.h"
+ 
+ namespace spades {

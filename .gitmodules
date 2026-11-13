@@ -1,0 +1,3 @@
+[submodule "openspades"]
+	path = openspades
+	url = https://github.com/yvt/openspades.git

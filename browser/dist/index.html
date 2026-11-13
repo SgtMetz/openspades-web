@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#000000"><meta name="openspades-relay" content="1"><title>OpenSpades</title><link rel="icon" href="assets/Gfx/Title/LogoSmall.png"><link rel="stylesheet" href="style.css"></head>
+<body>
+<canvas id="game" aria-label="OpenSpades game view"></canvas>
+<canvas id="hud" aria-hidden="true"></canvas>
+<main id="menu">
+ <img class="logo" src="assets/Gfx/Title/LogoWeb.png" alt="OpenSpades Web" width="704" height="128">
+ <p id="mobile-hint">Touch controls enabled · Turn sideways for more room.<br>Left stick to move · Swipe the view to look · Hold Fire to shoot.</p>
+ <div class="contents">
+  <div class="row address-row">
+   <input id="server-address" class="field" placeholder="Quick Connect" spellcheck="false" autocomplete="off" aria-label="Server address">
+   <button class="button toggle" id="proto-3" type="button">0.75</button>
+   <button class="button toggle" id="proto-4" type="button">0.76</button>
+   <button class="button connect" id="connect" type="button" disabled>Connect</button>
+  </div>
+  <div class="list-header" role="row">
+   <button type="button" data-sort="name" style="left:2px;width:298px">Server Name</button>
+   <button type="button" data-sort="players" style="left:300px;width:100px">Players</button>
+   <button type="button" data-sort="map" style="left:400px;width:150px">Map Name</button>
+   <button type="button" data-sort="mode" style="left:550px;width:80px">Game Mode</button>
+   <button type="button" data-sort="version" style="left:630px;width:50px">Ver.</button>
+   <button type="button" data-sort="country" style="left:680px;width:50px">Loc.</button>
+  </div>
+  <div id="server-list" class="list" role="listbox" aria-label="Server list"></div>
+  <div id="list-status" class="list-status"></div>
+  <div class="row footer">
+   <span class="label">Filter</span>
+   <button class="button toggle simple" id="filter-3" type="button" style="left:50px;width:40px">0.75</button>
+   <button class="button toggle simple" id="filter-4" type="button" style="left:90px;width:40px">0.76</button>
+   <button class="button toggle simple" id="filter-empty" type="button" style="left:135px;width:50px">Empty</button>
+   <button class="button toggle simple" id="filter-full" type="button" style="left:185px;width:70px">Not Full</button>
+   <input id="filter-text" class="field" placeholder="Filter" spellcheck="false" style="left:260px;width:120px" aria-label="Filter servers">
+   <button class="button simple refresh" id="refresh" type="button" style="left:386px;width:30px" aria-label="Refresh server list"></button>
+   <button class="button" id="practice" type="button" style="left:446px;width:100px" disabled>Practice</button>
+   <button class="button" id="setup" type="button" style="left:548px;width:100px">Setup</button>
+   <button class="button" id="credits" type="button" style="left:650px;width:100px">Credits</button>
+  </div>
+ </div>
+ <div id="boot-status" class="boot-status" role="status">Loading OpenSpades…</div>
+</main>
+<div id="dialog-layer" hidden>
+ <section id="setup-dialog" class="dialog" hidden aria-label="Setup">
+  <h2>Setup</h2>
+  <label><span>Player Name</span><input id="player-name" class="field" maxlength="15" autocomplete="nickname" spellcheck="false" value="Deuce"></label>
+  <label><span>Mouse Sensitivity</span><input id="sensitivity" type="range" min="0.3" max="2.5" value="1" step="0.1"></label>
+  <label><span>Touch Controls</span><select id="touch-mode" class="field"><option value="auto">Automatic</option><option value="on">On</option><option value="off">Off</option></select></label>
+  <label><span>Sound Volume</span><input id="volume" type="range" min="0" max="1" value="0.55" step="0.05"></label>
+  <label><span>Practice Opponents</span><select id="bots" class="field"><option value="0">None (sandbox)</option><option value="3">3</option><option value="6" selected>6</option><option value="10">10</option></select></label>
+  <div class="dialog-buttons"><button class="button" id="setup-close" type="button">OK</button></div>
+ </section>
+ <section id="game-menu" class="dialog small" hidden aria-label="Menu">
+  <button class="button" id="menu-back" type="button">Back to Game</button>
+  <button class="button" id="menu-chatlog" type="button">Chat Log</button>
+  <button class="button" id="menu-setup" type="button">Setup</button>
+  <button class="button" id="menu-save-map" type="button">Save Map (.vxl)</button>
+  <button class="button" id="menu-screenshot" type="button">Save Screenshot</button>
+  <button class="button" id="menu-disconnect" type="button">Disconnect</button>
+ </section>
+ <section id="chat-log" class="dialog wide" hidden aria-label="Chat log">
+  <div id="chat-log-lines" class="chat-log-lines"></div>
+  <div class="dialog-buttons"><button class="button" id="chat-log-close" type="button">Close</button></div>
+ </section>
+ <form id="name-dialog" class="dialog" hidden aria-label="Choose a name" autocomplete="off">
+  <h2>Choose a Name</h2>
+  <p>Pick the name other players will see.</p>
+  <label><span>Player Name</span><input id="name-input" class="field" maxlength="15" autocomplete="nickname" spellcheck="false" placeholder="Your name"></label>
+  <p id="name-error" class="name-error" hidden>Enter a name (letters, numbers and symbols, up to 15 characters).</p>
+  <div class="dialog-buttons"><button class="button" id="name-cancel" type="button">Cancel</button><button class="button" id="name-ok" type="submit">Connect</button></div>
+ </form>
+ <section id="message-box" class="dialog" hidden role="alertdialog">
+  <h2 id="message-title">Disconnected</h2><p id="message-text"></p>
+  <div class="dialog-buttons"><button class="button" id="message-ok" type="button">OK</button></div>
+ </section>
+</div>
+<form id="chat-form" class="chat-say" hidden>
+ <input id="chat-input" class="field" maxlength="90" autocomplete="off" spellcheck="false" placeholder="Chat Text" aria-label="Chat text">
+ <div class="chat-buttons">
+  <button class="button toggle" id="chat-global" type="button">Global</button><button class="button toggle" id="chat-team" type="button">Team</button>
+  <span class="spacer"></span>
+  <button class="button" type="submit">Say</button><button class="button" id="chat-cancel" type="button">Cancel</button>
+ </div>
+</form>
+<section id="mobile-limbo" hidden aria-label="Choose team and weapon">
+ <div class="mobile-selection-header"><h2>Choose your loadout</h2><button type="button" id="mobile-limbo-menu">Menu</button></div>
+ <div id="mobile-teams"><p>Team</p><div class="mobile-options"><button type="button" data-team="0">Blue</button><button type="button" data-team="1">Green</button><button type="button" data-team="2">Spectator</button></div></div>
+ <div id="mobile-weapons"><p>Weapon</p><div class="mobile-options"><button type="button" data-weapon="0">Rifle</button><button type="button" data-weapon="1">SMG</button><button type="button" data-weapon="2">Shotgun</button></div></div>
+ <button type="button" id="mobile-spawn">Spawn</button>
+</section>
+<div id="touch-controls" hidden aria-label="Touch game controls">
+ <div class="touch-top">
+  <button type="button" data-action="menu">Menu</button>
+  <button type="button" data-action="KeyM">Map</button>
+  <button type="button" data-key="Tab">Scores</button>
+  <button type="button" data-action="KeyT">Chat</button>
+  <button type="button" data-action="Period">Loadout</button>
+  <button type="button" data-action="fullscreen" aria-label="Expand game">⛶</button>
+ </div>
+ <div id="touch-stick" aria-label="Movement joystick"><span id="touch-knob"></span><span class="stick-label">MOVE</span></div>
+ <div class="touch-tools" aria-label="Select tool">
+  <button type="button" data-action="Digit1">Spade</button><button type="button" data-action="Digit2">Block</button><button type="button" data-action="Digit3">Gun</button><button type="button" data-action="Digit4">Grenade</button>
+ </div>
+ <div class="touch-actions">
+  <button type="button" data-action="KeyR">Reload</button><button type="button" data-mouse="2">Aim / Alt</button>
+  <button type="button" data-key="Space">Jump</button><button type="button" data-mouse="1" class="touch-fire">Fire / Use</button>
+  <button type="button" data-key="ControlLeft">Crouch</button><button type="button" data-key="ShiftLeft">Sprint</button>
+ </div>
+ <div class="touch-extra"><button type="button" data-action="KeyE">Resupply</button><button type="button" data-action="ArrowRight">Color</button></div>
+</div>
+<script type="module" src="main.js"></script>
+</body></html>

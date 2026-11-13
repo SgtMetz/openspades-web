@@ -1,0 +1,169 @@
+/* OpenSpades UI framework look (Scripts/Gui/UIFramework): AlteDIN1451 16px, translucent black/white panels. */
+@font-face{font-family:AlteDIN1451;src:url(assets/Gfx/Fonts/AlteDIN1451.ttf) format('truetype');font-display:block}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:#000;color:#fff;font:16px/20px AlteDIN1451,'Arial Narrow',sans-serif}
+button,input,select{font:inherit;color:inherit}
+[hidden]{display:none!important}
+#game,#hud{position:fixed;inset:0;width:100%;height:100%;display:block}
+#game{z-index:0}
+#hud{pointer-events:none;z-index:1}
+#hud.interactive{pointer-events:auto}
+body.in-menu #game{filter:blur(2px)}
+
+/* Main screen (MainMenu.as): 750 px wide contents, logo at y = 64. */
+#menu{position:fixed;inset:0;background:rgba(0,0,0,.15);z-index:2}
+#menu .logo{position:absolute;left:50%;top:64px;margin-left:-352px;width:704px;height:128px;pointer-events:none;user-select:none}
+#menu .contents{position:absolute;top:0;bottom:0;left:50%;width:750px;margin-left:-375px}
+.contents>.row>*,.list-header>*{position:absolute}
+.address-row #server-address{left:0;top:200px;width:510px;height:30px}
+.address-row #proto-3{left:516px;top:200px;width:40px;height:30px}
+.address-row #proto-4{left:556px;top:200px;width:40px;height:30px}
+.address-row #connect{left:600px;top:200px;width:150px;height:30px}
+.list-header{position:absolute;left:0;top:240px;width:750px;height:30px}
+.list-header button{top:0;white-space:nowrap;height:30px;border:0;background:rgba(255,255,255,0);text-align:left;padding:2px 0 0 2px;margin-left:-2px;cursor:pointer;text-shadow:none}
+.list-header button:hover{background:rgba(255,255,255,.15)}
+.list-header button:active{background:rgba(255,255,255,.3)}
+.list{position:absolute;left:0;top:270px;width:750px;bottom:60px;overflow-y:auto;background:rgba(0,0,0,.2);box-shadow:inset 0 0 0 1px rgba(255,255,255,.06);scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.4) transparent}
+.list::-webkit-scrollbar{width:8px}.list::-webkit-scrollbar-thumb{background:rgba(255,255,255,.4)}
+.server{position:relative;display:block;width:100%;height:24px;border:0;padding:0;background:rgba(255,255,255,0);cursor:pointer;text-align:left;white-space:nowrap}
+.server:hover{background:rgba(255,255,255,.15)}
+.server:active,.server.selected{background:rgba(255,255,255,.3)}
+.server.favorite{background:rgba(77,77,255,.1);color:#dcdc00}
+.server span{position:absolute;top:2px;overflow:hidden;text-overflow:clip}
+.server .name{left:4px;width:292px}.server .players{left:300px;width:80px;text-align:center}.server .map{left:400px;width:146px}
+.server .mode{left:550px;width:76px}.server .version{left:630px;width:46px}.server .country{left:680px;width:40px}
+.server .flag{position:absolute;left:692px;top:4px;width:16px;height:16px;background:url(assets/Gfx/UI/Flags.png) 0 0/256px 256px no-repeat}
+.list-status{position:absolute;left:0;right:0;top:400px;text-align:center;color:rgba(255,255,255,.8);pointer-events:none}
+.footer>*{bottom:20px;height:30px}
+.footer .label{left:0;width:50px;line-height:30px}
+.boot-status{position:fixed;right:16px;bottom:24px;color:rgba(255,255,255,.95);pointer-events:none}
+
+/* spades::ui::Button: Gfx/UI/Button.png nine-slice tinted (.2,.2,.2,.5) / hover (.4,.4,.4,.7) / pressed (.7,.7,.7,.9). */
+.button{position:relative;border:0;background:none;padding:0 8px;cursor:pointer;text-shadow:1px 1px 0 rgba(0,0,0,.4);white-space:nowrap;isolation:isolate}
+.button::before{content:'';position:absolute;inset:0;z-index:-1;background:rgba(51,51,51,.5);border-radius:5px;-webkit-mask-box-image:url(assets/Gfx/UI/Button.png) 12 fill / 12px}
+.button:hover::before{background:rgba(102,102,102,.7)}
+.button:active::before,.button.on::before{background:rgba(179,179,179,.9)}
+.button:disabled{cursor:default;color:rgba(255,255,255,.5)}
+.button:disabled::before{background:rgba(51,51,51,.25)}
+/* SimpleButton: white .07 fill with a 1 px white .03 frame. */
+.button.simple{text-shadow:1px 1px 0 rgba(0,0,0,.4)}
+.button.simple::before{-webkit-mask-box-image:none;border-radius:0;background:rgba(255,255,255,.07);box-shadow:inset 0 0 0 1px rgba(255,255,255,.03)}
+.button.simple:hover::before{background:rgba(255,255,255,.12);box-shadow:inset 0 0 0 1px rgba(255,255,255,.07)}
+.button.simple:active::before,.button.simple.on::before{background:rgba(255,255,255,.2);box-shadow:inset 0 0 0 1px rgba(255,255,255,.1)}
+.button.refresh{background:url(assets/Gfx/UI/Refresh.png) center no-repeat}
+.button:focus-visible,.field:focus-visible{outline:1px solid rgba(255,255,255,.5);outline-offset:1px}
+/* spades::ui::Field */
+.field{border:0;border-radius:0;padding:0 4px;background:rgba(0,0,0,.1);box-shadow:inset 0 0 0 1px rgba(255,255,255,.06);outline:none;caret-color:#fff}
+.field:hover{box-shadow:inset 0 0 0 1px rgba(255,255,255,.1)}
+.field:focus{background:rgba(0,0,0,.3);box-shadow:inset 0 0 0 1px rgba(255,255,255,.2)}
+.field::placeholder{color:rgba(255,255,255,.5)}
+.field::selection{background:rgba(255,255,255,.3)}
+select.field{height:30px;background:rgba(0,0,0,.3)}select.field option{background:#222}
+
+/* Dialogs: black .5 full-screen dimmer and window (ClientMenu, Setup, MessageBox). */
+#dialog-layer{position:fixed;inset:0;background:rgba(0,0,0,.5);display:grid;place-items:center;z-index:10}
+.dialog{background:rgba(0,0,0,.5);padding:8px;width:420px;box-shadow:0 0 0 8px rgba(0,0,0,0)}
+.dialog h2{font-size:24px;line-height:32px;font-weight:normal;margin:0 0 12px}
+.dialog p{margin:0 0 12px;line-height:20px}
+.dialog .name-error{margin:8px 0 0;color:rgb(255,179,179)}
+.dialog label{display:flex;align-items:center;justify-content:space-between;gap:16px;height:36px}
+.dialog label .field{width:200px;height:30px}
+.dialog input[type=range]{width:200px;accent-color:#bbb}
+.dialog-buttons{display:flex;justify-content:flex-end;gap:4px;margin-top:12px}
+.dialog-buttons .button{width:120px;height:30px}
+.dialog.small{width:196px;display:flex;flex-direction:column;gap:2px}
+.dialog.small .button{width:180px;height:30px}
+.dialog.wide{width:min(900px,90vw)}
+.chat-log-lines{height:60vh;overflow-y:auto;background:rgba(0,0,0,.2);padding:4px;white-space:pre-wrap}
+.chat-log-lines div{text-shadow:1px 1px 0 rgba(0,0,0,.8)}
+
+/* ChatSayWindow: 70% of the screen wide, 66 px tall, 20 px above the bottom. */
+.chat-say{position:fixed;left:15%;width:70%;bottom:20px;height:66px;z-index:5}
+.chat-say::before{content:'';position:absolute;inset:-8px;background:rgba(0,0,0,.5);z-index:-1}
+.chat-say .field{display:block;width:100%;height:30px}
+.chat-buttons{display:flex;margin-top:6px;height:30px}
+.chat-buttons .button{width:70px;height:30px}.chat-buttons [type=submit],#chat-cancel{width:120px;margin-left:4px}
+.chat-buttons .spacer{flex:1}
+
+/* Phones use the same menus and servers, arranged for a finger-sized viewport. */
+#mobile-hint{display:none}
+html.mobile body.in-menu #game{filter:none}
+html.mobile #menu{background:rgba(0,0,0,.72)}
+html.mobile #menu .logo{top:24px}
+html.mobile #mobile-hint{display:block;position:absolute;top:154px;left:16px;right:16px;margin:0;text-align:center;color:#d2dfc9;font:13px/19px system-ui,sans-serif}
+@media(max-width:800px),(max-height:540px),(pointer:coarse){
+ #menu{overflow:auto;padding:12px max(12px,env(safe-area-inset-right)) 12px max(12px,env(safe-area-inset-left));display:flex;flex-direction:column;gap:10px}
+ #menu .logo{position:static;margin:0 auto;width:min(100%,440px);height:auto;max-height:90px;object-fit:contain;flex-shrink:0}
+ #menu .contents{position:static;margin:0;width:100%;display:flex;flex:1;min-height:260px;flex-direction:column;gap:8px}
+ #menu .contents>.row>*,#menu .list-header>*{position:static!important;inset:auto!important;width:auto!important;height:44px!important}
+ #menu .address-row{display:grid;grid-template-columns:minmax(0,1fr) 44px 44px;gap:4px}
+ #menu .address-row #server-address{width:100%!important;min-width:0}
+ #menu .address-row #connect{grid-column:1/-1}
+ #menu .list-header{position:static;width:100%;display:grid;grid-template-columns:minmax(0,1fr) 64px 72px;height:36px;flex-shrink:0}
+ #menu .list-header button{height:36px!important;overflow:hidden;text-overflow:ellipsis}
+ #menu .list-header button:nth-child(n+4){display:none}
+ #menu .list{position:static;width:100%;min-height:140px;flex:1;overflow:auto}
+ #menu .server{height:56px;display:grid;grid-template-columns:minmax(0,1fr) 64px 72px;align-items:center;padding:4px 2px;gap:0;border-bottom:1px solid #ffffff12}
+ #menu .server span{position:static;width:auto;text-align:left;overflow:hidden;text-overflow:ellipsis;line-height:20px}
+ #menu .server .name{white-space:normal;max-height:40px}
+ #menu .server .players{text-align:center}
+ #menu .server .map{font-size:13px;color:#c5cbbf}
+ #menu .server .mode,#menu .server .version,#menu .server .country,#menu .server .flag{display:none}
+ #menu .list-status{position:static;font-size:14px}
+ #menu .list-status:empty{display:none}
+ #menu .footer{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px;flex-shrink:0}
+ #menu .footer .label{display:none}
+ #menu #filter-empty,#menu #filter-full{grid-column:span 2}
+ #menu #filter-text{grid-column:span 5;min-width:0}
+ #menu #practice,#menu #setup,#menu #credits{grid-column:span 2}
+ #menu .boot-status{position:static;text-align:center;font-size:13px}
+ html.mobile #mobile-hint{position:static;font-size:12px;line-height:17px;flex-shrink:0}
+ .dialog{width:min(420px,calc(100vw - 24px));max-height:calc(100dvh - 24px);overflow:auto;padding:12px;background:rgba(0,0,0,.88)}
+ .dialog label{height:auto;min-height:48px;gap:8px}
+ .dialog label .field,.dialog input[type=range]{width:50%;min-width:0;height:44px}
+ .dialog-buttons .button,.dialog.small .button{height:44px}
+ .dialog.small{width:min(300px,calc(100vw - 24px));gap:8px}.dialog.small .button{width:100%}
+ .chat-say{left:12px;right:12px;width:auto;bottom:max(16px,env(safe-area-inset-bottom));height:auto}
+ .chat-say .field,.chat-buttons,.chat-buttons .button{height:44px}
+ .chat-buttons .button{min-width:0;padding:0 6px;flex:1}.chat-buttons .spacer{display:none}
+ input.field{font-size:16px}
+}
+@media(max-height:540px) and (min-width:600px){
+ #menu .logo{max-height:52px;width:286px}
+ html.mobile #mobile-hint{position:absolute;top:12px;left:auto;right:16px;font-size:11px;max-width:240px;text-align:right}
+ #menu .address-row{grid-template-columns:minmax(0,1fr) 44px 44px 120px}
+ #menu .address-row #connect{grid-column:auto}
+ #menu .contents{min-height:240px}
+ #menu .footer{grid-template-columns:44px 44px 64px 76px minmax(60px,1fr) 44px 90px 70px 70px}
+ #menu #filter-empty,#menu #filter-full,#menu #filter-text,#menu #practice,#menu #setup,#menu #credits{grid-column:auto}
+}
+
+#touch-controls{position:fixed;inset:0;z-index:3;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+#touch-controls button,#mobile-limbo button{color:#fff;background:rgba(15,22,18,.75);border:1px solid #d7e6d266;border-radius:9px;min-height:44px;font:14px/1.1 AlteDIN1451,sans-serif;touch-action:none;padding:8px;box-shadow:0 2px 10px #0004}
+#touch-controls button.held,#touch-controls button[aria-pressed=true],#mobile-limbo button[aria-pressed=true]{background:rgba(138,174,115,.8);border-color:#e6f8d7;color:#fff}
+.touch-top{position:absolute;top:max(10px,env(safe-area-inset-top));left:max(12px,env(safe-area-inset-left));display:flex;gap:5px;flex-wrap:wrap;max-width:calc(100% - 160px);pointer-events:none}
+.touch-top button{pointer-events:auto;min-width:46px}
+#touch-stick{position:absolute;left:max(22px,env(safe-area-inset-left));bottom:max(66px,calc(env(safe-area-inset-bottom) + 52px));width:128px;height:128px;border:2px solid #d7e6d255;background:#10181044;border-radius:50%;display:grid;place-items:center}
+#touch-knob{display:block;width:48px;height:48px;border-radius:50%;background:#d7e6d277;border:1px solid #e6f8d7;pointer-events:none}
+.stick-label{position:absolute;bottom:12px;font:10px system-ui,sans-serif;letter-spacing:2px;color:#d7e6d2aa;pointer-events:none}
+.touch-actions{position:absolute;right:max(12px,env(safe-area-inset-right));bottom:max(62px,calc(env(safe-area-inset-bottom) + 52px));width:154px;display:grid;grid-template-columns:1fr 1fr;gap:7px;pointer-events:none}
+.touch-actions button{pointer-events:auto;min-height:48px}
+.touch-actions .touch-fire{background:rgba(138,85,38,.8);border-color:#ecc38a;min-height:64px}
+.touch-tools{position:absolute;bottom:max(8px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);display:flex;gap:5px;pointer-events:none}
+.touch-tools button{pointer-events:auto;min-width:58px}
+.touch-extra{position:absolute;left:max(12px,env(safe-area-inset-left));bottom:max(208px,calc(env(safe-area-inset-bottom) + 194px));display:flex;gap:6px;pointer-events:none}
+.touch-extra button{pointer-events:auto}
+#mobile-limbo{position:fixed;z-index:4;left:50%;bottom:max(16px,env(safe-area-inset-bottom));transform:translateX(-50%);width:min(520px,calc(100% - 24px));max-height:calc(100dvh - 24px);overflow:auto;padding:16px;border:1px solid #d7e6d244;border-radius:12px;background:#101810ed}
+.mobile-selection-header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.mobile-selection-header h2{font-size:21px;font-weight:400;margin:0}
+#mobile-limbo p{margin:12px 0 6px;color:#c5d6bd}
+.mobile-options{display:flex;gap:8px}.mobile-options button{flex:1;min-width:0}
+#mobile-spawn{width:100%;margin-top:16px;background:#586d43!important;min-height:48px!important}
+html.mobile #hud.interactive{pointer-events:none}
+@media(max-width:380px){#touch-stick{width:108px;height:108px;left:16px}.touch-actions{width:146px}.touch-top{gap:4px}.touch-top button{font-size:12px}}
+@media(max-height:400px) and (min-width:600px){
+ #touch-stick{width:110px;height:110px;bottom:max(58px,calc(env(safe-area-inset-bottom) + 48px))}
+ .touch-extra{top:max(112px,calc(env(safe-area-inset-top) + 102px));bottom:auto}
+ .touch-actions{gap:5px;bottom:max(56px,calc(env(safe-area-inset-bottom) + 46px))}
+ .touch-actions button{min-height:44px}.touch-actions .touch-fire{min-height:56px}
+}

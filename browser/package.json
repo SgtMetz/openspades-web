@@ -1,0 +1,7 @@
+{
+  "name": "openspades-browser-offline",
+  "private": true,
+  "type": "module",
+  "scripts": { "start": "node server.mjs", "test": "node tests/touch.mjs && node tests/core.mjs && node tests/parity.mjs && node tests/audio.mjs" },
+  "dependencies": { "three": "0.170.0" }
+}
