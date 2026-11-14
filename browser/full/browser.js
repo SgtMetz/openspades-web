@@ -522,10 +522,13 @@ if (typeof window !== 'undefined') {
   const HELPER = 'http://127.0.0.1:32880', HELPER_KNOWN = 'openspades-helper-known';
   let helperUp = false, helperChecking = null, helperDialog = null;
   const helperKnown = () => { try { return localStorage.getItem(HELPER_KNOWN) === '1'; } catch (e) { return false; } };
-  // The helper is built for Windows, macOS and Linux desktops; phones, tablets and Chromebooks can't run it.
+  // The helper is built for Windows, macOS and Linux desktops and for Android (an app with the same relay). iPhones,
+  // iPads and Chromebooks can't run it (a Chromebook's Android apps don't share the browser's 127.0.0.1).
   const helperOs = (() => {
     const p = (navigator.userAgentData?.platform || navigator.platform || '') + ' ' + navigator.userAgent;
-    if (/CrOS|Android/i.test(p)) return '';
+    if (/CrOS/i.test(p)) return '';
+    if (/Android/i.test(p)) return 'Android';
+    if (touch.enabled) return ''; // iPhone, iPad (an iPad says Mac), other touch devices
     if (/Win/i.test(p)) return 'Windows';
     if (/Mac/i.test(p)) return 'macOS';
     if (/Linux|X11/i.test(p)) return 'Linux';
@@ -548,7 +551,7 @@ if (typeof window !== 'undefined') {
   // are not probed (no permission prompt): the banner says to get it. Check again probes on request.
   let helperBanner = null, helperBannerClosed = false, helperBannerPoll = 0;
   function updateHelperBanner() {
-    const show = !!helperPage && !touch.enabled && !!helperOs && !helperUp && !helperBannerClosed && !Object.keys(nets).length;
+    const show = !!helperPage && !!helperOs && !helperUp && !helperBannerClosed && !Object.keys(nets).length;
     if (!show) {
       helperBanner?.remove(); helperBanner = null;
       clearInterval(helperBannerPoll); helperBannerPoll = 0;
@@ -576,7 +579,7 @@ if (typeof window !== 'undefined') {
     if (helperKnown() && !helperBannerPoll) helperBannerPoll = setInterval(checkHelper, 5000);
   }
   if (helperPage && helperKnown()) checkHelper(); else updateHelperBanner();
-  const wantsHelper = host => !!helperPage && !touch.enabled && !!helperOs && !helperSkip.has(host);
+  const wantsHelper = host => !!helperPage && !!helperOs && !helperSkip.has(host);
   function offerHelper() {
     if (helperDialog) return;
     const d = helperDialog = document.createElement('dialog');
@@ -591,7 +594,8 @@ if (typeof window !== 'undefined') {
     a.href = helperPage; a.target = '_blank'; a.rel = 'noopener'; a.textContent = 'Download the helper (' + helperOs + ')';
     a.className = 'helper-download';
     const status = document.createElement('p'); status.className = 'helper-status';
-    status.textContent = 'Helper not running. Open it, keep its ' + (helperOs === 'Windows' ? 'window' : 'Terminal window') + ' open, then join the server again.';
+    status.textContent = helperOs === 'Android' ? 'Helper not running. Open the OpenSpades Helper app, tap Start, come back here and join the server again.'
+      : 'Helper not running. Open it, keep its ' + (helperOs === 'Windows' ? 'window' : 'Terminal window') + ' open, then join the server again.';
     const close = document.createElement('button'); close.textContent = 'Close'; close.onclick = () => d.close();
     d.append(h, p, a, status, close);
     // Look for the helper while the dialog is open (the first look may make the browser ask for permission).
