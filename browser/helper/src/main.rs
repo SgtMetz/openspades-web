@@ -42,7 +42,11 @@ fn main() {
             return;
         }
     };
-    println!("Running. Keep this window open while you play, then close it when you are done.");
+    if cfg!(windows) {
+        println!("Running. Keep this window open while you play, then close it when you are done.");
+    } else {
+        println!("Running. Keep this window open while you play, then press Ctrl+C or close it when you are done.");
+    }
     println!("Allowed pages: {}", allowed_list().join(", "));
     for stream in listener.incoming().flatten() {
         if ACTIVE.load(Ordering::SeqCst) >= MAX_CONNECTIONS {

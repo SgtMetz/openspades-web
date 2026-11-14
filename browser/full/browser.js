@@ -522,22 +522,33 @@ if (typeof window !== 'undefined') {
   const HELPER = 'http://127.0.0.1:32880', HELPER_KNOWN = 'openspades-helper-known';
   let helperUp = false, helperChecking = null, helperDialog = null;
   const helperKnown = () => { try { return localStorage.getItem(HELPER_KNOWN) === '1'; } catch (e) { return false; } };
+  // The helper is built for Windows, macOS and Linux desktops; phones, tablets and Chromebooks can't run it.
+  const helperOs = (() => {
+    const p = (navigator.userAgentData?.platform || navigator.platform || '') + ' ' + navigator.userAgent;
+    if (/CrOS|Android/i.test(p)) return '';
+    if (/Win/i.test(p)) return 'Windows';
+    if (/Mac/i.test(p)) return 'macOS';
+    if (/Linux|X11/i.test(p)) return 'Linux';
+    return '';
+  })();
+  // Safari treats the helper's http://127.0.0.1 as mixed content on an https page and blocks it (WebKit bug 171934).
+  const helperBlockedBrowser = /Safari/.test(navigator.userAgent) && !/Chrome|Chromium|CriOS|Edg|Firefox|OPR/.test(navigator.userAgent);
   function checkHelper() {
     return helperChecking ||= fetch(HELPER + '/health', {mode: 'cors', cache: 'no-store', signal: AbortSignal.timeout(1500)})
       .then(r => r.json()).then(j => j?.helper === 'openspades', () => false)
       .then(up => {
         helperUp = up; helperChecking = null;
         if (up) try { localStorage.setItem(HELPER_KNOWN, '1'); } catch (e) {}
+        updateHelperBanner();
         return up;
       });
-        updateHelperBanner();
   }
   // A red banner on the main menu (no server connection open) while the helper isn't running, so players
   // know before joining that the "[Needs Helper]" servers will refuse them. Players who never ran the helper
   // are not probed (no permission prompt): the banner says to get it. Check again probes on request.
   let helperBanner = null, helperBannerClosed = false, helperBannerPoll = 0;
   function updateHelperBanner() {
-    const show = !!helperPage && !touch.enabled && !helperUp && !helperBannerClosed && !Object.keys(nets).length;
+    const show = !!helperPage && !touch.enabled && !!helperOs && !helperUp && !helperBannerClosed && !Object.keys(nets).length;
     if (!show) {
       helperBanner?.remove(); helperBanner = null;
       clearInterval(helperBannerPoll); helperBannerPoll = 0;
@@ -548,7 +559,7 @@ if (typeof window !== 'undefined') {
       b.id = 'helper-warning'; b.setAttribute('role', 'alert');
       const text = document.createElement('span');
       const a = document.createElement('a');
-      a.href = helperPage; a.target = '_blank'; a.rel = 'noopener'; a.textContent = 'Get the Helper (Windows)';
+      a.href = helperPage; a.target = '_blank'; a.rel = 'noopener'; a.textContent = 'Get the Helper (' + helperOs + ')';
       const again = document.createElement('button'); again.textContent = 'Check again';
       again.onclick = () => { again.disabled = true; checkHelper().then(() => { again.disabled = false; }); };
       const close = document.createElement('button'); close.textContent = '×'; close.title = 'Hide';
@@ -565,7 +576,7 @@ if (typeof window !== 'undefined') {
     if (helperKnown() && !helperBannerPoll) helperBannerPoll = setInterval(checkHelper, 5000);
   }
   if (helperPage && helperKnown()) checkHelper(); else updateHelperBanner();
-  const wantsHelper = host => !!helperPage && !touch.enabled && !helperSkip.has(host); // the helper is a Windows app
+  const wantsHelper = host => !!helperPage && !touch.enabled && !!helperOs && !helperSkip.has(host);
   function offerHelper() {
     if (helperDialog) return;
     const d = helperDialog = document.createElement('dialog');
@@ -574,12 +585,13 @@ if (typeof window !== 'undefined') {
     const p = document.createElement('p');
     p.textContent = 'Some servers block web players because the web game connects through a data centre. ' +
       'The free OpenSpades Helper lets the game connect from your own internet connection, like the desktop game. ' +
-      'Without it you can still try: this server may work.';
+      'Without it you can still try: this server may work.' +
+      (helperBlockedBrowser ? ' Safari can’t reach the helper: play in Chrome, Firefox or Edge to use it.' : '');
     const a = document.createElement('a');
-    a.href = helperPage; a.target = '_blank'; a.rel = 'noopener'; a.textContent = 'Download the helper (Windows)';
+    a.href = helperPage; a.target = '_blank'; a.rel = 'noopener'; a.textContent = 'Download the helper (' + helperOs + ')';
     a.className = 'helper-download';
     const status = document.createElement('p'); status.className = 'helper-status';
-    status.textContent = 'Helper not running. Open it, keep its window open, then join the server again.';
+    status.textContent = 'Helper not running. Open it, keep its ' + (helperOs === 'Windows' ? 'window' : 'Terminal window') + ' open, then join the server again.';
     const close = document.createElement('button'); close.textContent = 'Close'; close.onclick = () => d.close();
     d.append(h, p, a, status, close);
     // Look for the helper while the dialog is open (the first look may make the browser ask for permission).
