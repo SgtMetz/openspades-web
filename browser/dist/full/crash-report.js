@@ -10,6 +10,9 @@
   const STALL_MS = 30000, KEY = 'openspades-crash-session';
   const started = Date.now(), session = started.toString(36) + '-' + Math.random().toString(36).slice(2, 6);
   const lines = [];
+  // In a frame of the same site (the home page) that page shows the Report a bug button beside its Fullscreen
+  // button and calls osCrashReport.reportBug(): no bar of our own under the game then (index.html html.framed).
+  try { if (self !== top && top.location.origin === location.origin) document.documentElement.classList.add('framed'); } catch {}
   const local = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
   const endpoint = () => document.querySelector('meta[name="openspades-crash-report"]')?.content || (local ? '/__crash' : '');
 

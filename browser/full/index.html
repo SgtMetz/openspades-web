@@ -39,11 +39,11 @@ html.touch-playing nav{display:none}
 #touch-text:focus{border-color:#e6f8d7}html:not(.touch) #touch-text-bar{display:none!important}
 #touch-rotate{display:none;position:fixed;left:0;right:0;bottom:max(8px,env(safe-area-inset-bottom));text-align:center;font-size:14px;opacity:.75;pointer-events:none}
 @media (orientation:portrait){html.touch #touch-rotate{display:block}}
-/* The Report a bug bar below the game (desktop; browser.js viewportSize leaves room for it). Phones: a button in the top right corner, outside play. */
+/* The Report a bug bar below the game (desktop; browser.js viewportSize leaves room for it). Phones: a button in the top right corner, outside play. In the site's own frame (html.framed) the page around it has the button. */
 #os-report-bar{position:fixed;left:0;right:0;bottom:0;height:30px;display:flex;align-items:center;justify-content:center;gap:10px;background:#0b0b0b;border-top:1px solid #333;font:13px system-ui,sans-serif;color:#aaa;z-index:2}
 #os-report-bar button{padding:3px 12px;font:13px system-ui,sans-serif;background:#1d1d1d;border-color:#666}#os-report-bar button:hover{background:#2a2a2a;border-color:#999}
 #os-report-corner{display:none;position:fixed;right:max(8px,env(safe-area-inset-right));top:max(8px,env(safe-area-inset-top));z-index:2;opacity:.55;font-size:13px;padding:6px 10px}
-html.touch #os-report-bar,html.touch-playing #os-report-corner{display:none}html.touch:not(.touch-playing) #os-report-corner{display:block}
+html.touch #os-report-bar,html.framed #os-report-bar,html.touch-playing #os-report-corner{display:none}html.touch:not(.touch-playing) #os-report-corner{display:block}
 @media (max-height:420px){#touch-stick{width:108px;height:108px}.touch-actions{width:150px}.touch-actions button{min-height:40px}.touch-actions .touch-fire{min-height:52px}}</style></head>
 <body>
 <!-- #canvas receives input and is transferred to the client thread (WebGL); #native-view shows the frames. -->
