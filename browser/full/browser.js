@@ -60,7 +60,10 @@ if (typeof window !== 'undefined') {
     }
   }
   // Rotation and Safari's toolbars settle after the resize event: lay out again once they have.
-  const relayout = () => { layout(); setTimeout(layout, 250); setTimeout(layout, 800); };
+  // While the touch text field has focus the soft keyboard covers part of the screen and shrinks the visual
+  // viewport: keep the game's size then (shrinking and regrowing it was the keyboard's jank), and lay out on blur.
+  const typing = () => document.activeElement?.id === 'touch-text';
+  const relayout = () => { if (typing()) return; layout(); setTimeout(layout, 250); setTimeout(layout, 800); };
   addEventListener('orientationchange', relayout);
   window.visualViewport?.addEventListener('resize', relayout);
   addEventListener('pageshow', relayout);
@@ -374,23 +377,44 @@ if (typeof window !== 'undefined') {
     }
     if (requestFs) addEventListener('touchend', enterFs, {capture: true, once: true});
   }
-  // Text entry (chat, player name, server address): the soft keyboard needs a real text field.
-  // It keeps one placeholder character so a backspace on an otherwise empty field is still seen.
+  // Text entry (chat, player name, server address): the soft keyboard needs a real text field. It is shown in the
+  // text bar at the top (the keyboard covers the bottom, where the chat line is), so players see what they type.
+  // The game is sent the difference between what it was sent and the field's text, so autocorrect, suggestions
+  // and backspacing all reach it. The field starts with one invisible character so a backspace on an otherwise
+  // empty field (deleting text the game already had, like a saved player name) is still seen.
   const placeholder = '​';
-  textField.value = placeholder;
-  document.getElementById('touch-keyboard').addEventListener('click', () => { textField.value = placeholder; textField.focus(); });
-  document.getElementById('touch-escape').addEventListener('click', () => tap('Escape'));
+  let sentText = [], focusedAt = 0, wasTextInput = false;
+  const resetText = () => { sentText = []; textField.value = placeholder; };
+  resetText();
+  const openKeyboard = () => {
+    focusedAt = performance.now();
+    if (document.activeElement !== textField) textField.focus({preventScroll: true});
+    const end = textField.value.length; try { textField.setSelectionRange(end, end); } catch {}
+  };
+  document.getElementById('touch-escape').addEventListener('click', () => { tap('Escape'); textField.blur(); });
+  document.getElementById('touch-enter').addEventListener('pointerdown', e => e.preventDefault()); // keep the keyboard up
+  document.getElementById('touch-enter').addEventListener('click', () => { tap('Enter'); resetText(); });
+  // Chat: open the keyboard with the same tap (a soft keyboard opens only from a tap's own handler).
+  pad.addEventListener('click', e => { if (e.target.closest('button[data-tap="T"]')) openKeyboard(); });
   const takeText = () => {
-    const value = textField.value;
-    if (!value.startsWith(placeholder)) tap('BackSpace');
-    const text = value.replaceAll(placeholder, '').replace(/\n/g, '');
-    if (text) touch.queue.push('t' + text);
-    textField.value = placeholder;
+    let value = textField.value;
+    if (!value.startsWith(placeholder)) { tap('BackSpace'); value = placeholder + value; }
+    const now = Array.from(value.replaceAll(placeholder, '').replace(/\n/g, ''));
+    let same = 0;
+    while (same < sentText.length && same < now.length && sentText[same] === now[same]) same++;
+    for (let i = sentText.length; i > same; i--) touch.queue.push('+BackSpace', '-BackSpace');
+    // A key-up after the text: the game's UI repeats text input until one arrives (a desktop keyboard always sends
+    // it), which repeated letters typed on the soft keyboard. No key is called TextInput, so nothing else happens.
+    if (now.length > same) touch.queue.push('t' + now.slice(same).join(''), '-TextInput');
+    sentText = now;
+    if (textField.value !== placeholder + now.join('')) textField.value = placeholder + now.join('');
   };
   textField.addEventListener('input', e => { if (!e.isComposing) takeText(); });
   textField.addEventListener('compositionend', takeText);
+  textField.addEventListener('focus', () => { focusedAt = performance.now(); });
+  textField.addEventListener('blur', () => { scrollTo(0, 0); relayout(); });
   textField.addEventListener('keydown', e => {
-    if (e.key === 'Enter') { e.preventDefault(); tap('Enter'); }
+    if (e.key === 'Enter') { e.preventDefault(); tap('Enter'); resetText(); }
     else if (e.key === 'Escape') { e.preventDefault(); tap('Escape'); textField.blur(); }
     else if (e.key === 'Tab') { e.preventDefault(); tap('Tab'); }
     e.stopPropagation(); // the game receives this field's input above, not as window key events
@@ -404,8 +428,13 @@ if (typeof window !== 'undefined') {
       document.documentElement.classList.toggle('touch-playing', active);
       if (!active) releaseAll();
     }
-    if (textBar.hidden === !!textInput) textBar.hidden = !textInput;
-    if (!textInput && document.activeElement === textField) textField.blur();
+    if (!!textInput !== wasTextInput) {
+      wasTextInput = !!textInput; textBar.hidden = !textInput;
+      if (textInput && document.activeElement !== textField) resetText(); // a new text field in the game
+    }
+    // The game left text entry (chat sent, menu closed). Not right after Chat opened the keyboard: the game
+    // starts text entry a frame or two after the tap.
+    if (!textInput && document.activeElement === textField && performance.now() - focusedAt > 1000) { textField.blur(); resetText(); }
     if (touch.dx || touch.dy) {
       if (active) touch.queue.push('m' + touch.dx.toFixed(2) + ' ' + touch.dy.toFixed(2));
       touch.dx = touch.dy = 0;
@@ -478,7 +507,7 @@ if (typeof window !== 'undefined') {
       });
   }
   if (helperPage && helperKnown()) checkHelper();
-  const wantsHelper = host => !!helperPage && !helperSkip.has(host);
+  const wantsHelper = host => !!helperPage && !touch.enabled && !helperSkip.has(host); // the helper is a Windows app
   function offerHelper() {
     if (helperDialog) return;
     const d = helperDialog = document.createElement('dialog');

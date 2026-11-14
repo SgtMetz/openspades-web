@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>OpenSpades — Original Client</title>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-visual"><title>OpenSpades — Original Client</title>
 <style>html,body{margin:0;width:100%;height:100%;background:#000;color:#fff;font:16px system-ui;overflow:hidden}
 #canvas,#native-view,#native-gl-view{position:fixed;left:0;top:0;display:block;outline:0}#native-view,#native-gl-view{pointer-events:none}
 /* Menu cursor: the game's arrow (Gfx/UI/Cursor.png, hotspot 8,8) shown by the browser, so it follows
@@ -31,9 +31,11 @@ html.touch-playing nav{display:none}
 .touch-actions{position:absolute;right:max(12px,env(safe-area-inset-right));bottom:max(56px,calc(env(safe-area-inset-bottom) + 46px));width:160px;display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .touch-actions .touch-fire{grid-column:span 2;min-height:64px;background:rgba(138,85,38,.75);border-color:#ecc38a}
 .touch-tools{position:absolute;bottom:max(6px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);display:flex;gap:5px}
-#touch-text-bar{position:fixed;z-index:4;top:max(8px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);display:flex;gap:6px}
-#touch-text-bar[hidden]{display:none}
-#touch-text{position:fixed;left:0;bottom:0;width:1px;height:1px;opacity:0;font-size:16px;border:0;padding:0}
+/* The text bar stays in the page while hidden (invisible, not display:none) so Chat can focus its field in the same tap. */
+#touch-text-bar{position:fixed;z-index:4;top:max(8px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);display:flex;gap:6px;align-items:center;width:min(560px,calc(100vw - 20px))}
+#touch-text-bar[hidden]{display:flex!important;opacity:0;pointer-events:none}
+#touch-text{flex:1;min-width:0;height:44px;box-sizing:border-box;font:16px system-ui,sans-serif;color:#fff;background:rgba(15,22,18,.85);border:1px solid #d7e6d299;border-radius:9px;padding:0 12px;outline:0}
+#touch-text:focus{border-color:#e6f8d7}html:not(.touch) #touch-text-bar{display:none!important}
 #touch-rotate{display:none;position:fixed;left:0;right:0;bottom:max(8px,env(safe-area-inset-bottom));text-align:center;font-size:14px;opacity:.75;pointer-events:none}
 @media (orientation:portrait){html.touch #touch-rotate{display:block}}
 @media (max-height:420px){#touch-stick{width:108px;height:108px}.touch-actions{width:150px}.touch-actions button{min-height:40px}.touch-actions .touch-fire{min-height:52px}}</style></head>
@@ -49,8 +51,7 @@ html.touch-playing nav{display:none}
  <div class="touch-tools"><button data-tap="1">Spade</button><button data-tap="2">Block</button><button data-tap="3">Gun</button><button data-tap="4">Grenade</button></div>
  <div class="touch-actions"><button data-key="RightMouseButton">Aim</button><button data-key="Space">Jump</button><button data-key="Control">Crouch</button><button data-key="Shift">Sprint</button><button data-key="LeftMouseButton" class="touch-fire">Fire</button></div>
 </div>
-<div id="touch-text-bar" hidden><button id="touch-keyboard">Keyboard</button><button id="touch-escape">Esc</button></div>
-<input id="touch-text" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="Text input">
+<div id="touch-text-bar" hidden><input id="touch-text" type="text" enterkeyhint="send" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="Text input"><button id="touch-enter">Enter</button><button id="touch-escape">Esc</button></div>
 <p id="touch-rotate">Turn your device sideways for more room.</p>
 <dialog id="native-files"><h2>Saved files</h2><p>Maps, screenshots, demos, logs and configuration saved by OpenSpades (the desktop user directory).</p><div id="native-file-list"></div><button id="native-files-close">Close</button></dialog>
 
