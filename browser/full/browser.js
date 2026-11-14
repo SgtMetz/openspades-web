@@ -443,6 +443,16 @@ if (typeof window !== 'undefined') {
     const out = touch.queue.join('\n'); touch.queue = []; return out;
   };
 
+  // ---- Server list (http.cpp) --------------------------------------------------------------
+  // A hosting page may serve its own server list: <meta name="openspades-server-list" content="URL">. The client's
+  // requests for the master server's list (the URL saved in each player's config) go there instead, query kept.
+  const ownList = document.querySelector('meta[name="openspades-server-list"]')?.content || '';
+  const MASTER_LIST = /^https?:\/\/services\.buildandshoot\.com\/serverlist\.json(\?.*)?$/;
+  Module['osRewriteUrl'] = url => {
+    const m = ownList && MASTER_LIST.exec(url);
+    return m ? new URL(ownList, location.href).href.split('?')[0] + (m[1] || '') : url;
+  };
+
   // ---- Clipboard (BrowserPlatform.cpp) ------------------------------------------------
   Module['osClipboard'] = '';
   addEventListener('paste', e => { Module['osClipboard'] = e.clipboardData?.getData('text/plain') ?? ''; });
