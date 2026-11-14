@@ -62,12 +62,16 @@ if (typeof window !== 'undefined') {
 
   // OpenGL renderer: the client thread posts each finished WebGL frame as an ImageBitmap
   // (WebGLCompat.cpp: osweb_present). Show the newest one per display refresh.
-  let pending = [], drawing = false;
+  // Only the newest frame is kept: older ones are closed as soon as a newer one arrives. While
+  // the tab is hidden or minimised requestAnimationFrame does not run but the client keeps
+  // rendering (its in-flight wait times out), and queued full-size bitmaps used up all memory.
+  // Replaced frames still count as in flight until the next display refresh, so pacing is
+  // unchanged.
+  let pending = null, replaced = 0, drawing = false;
   function present() {
     drawing = false;
-    if (!pending.length) return;
-    const frames = pending; pending = [];
-    const latest = frames[frames.length - 1];
+    if (!pending) return;
+    const latest = pending; pending = null;
     const w = latest.bitmap.width, h = latest.bitmap.height;
     if (glCtx) {
       if (glView.width !== w || glView.height !== h) { glView.width = w; glView.height = h; }
@@ -81,8 +85,9 @@ if (typeof window !== 'undefined') {
       view.hidden = false;
     }
     Module['osPresentedFrames'] = (Module['osPresentedFrames'] || 0) + 1;
-    const heap = new Int32Array(wasmMemory.buffer);
-    for (const f of frames) { if (f !== latest || !glCtx) f.bitmap.close(); Atomics.sub(heap, f.counter >> 2, 1); }
+    if (!glCtx) latest.bitmap.close();
+    Atomics.sub(new Int32Array(wasmMemory.buffer), latest.counter >> 2, 1 + replaced);
+    replaced = 0;
   }
   function onWorkerMessage(e) {
     const d = e.data;
@@ -93,7 +98,8 @@ if (typeof window !== 'undefined') {
       dialog('OpenSpades', p); return;
     }
     if (d && d.osFrame) {
-      pending.push({bitmap: d.osFrame, counter: d.osCounter});
+      if (pending) { pending.bitmap.close(); replaced++; }
+      pending = {bitmap: d.osFrame, counter: d.osCounter};
       if (!drawing) { drawing = true; requestAnimationFrame(present); }
     }
   }

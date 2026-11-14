@@ -291,4 +291,9 @@ patch_resource(menu, """                @button.Activated = spades::ui::EventHan
             }
 """)
 patch_resource(menu, 'if (IsEnabled and key == "Escape") {', 'if (IsEnabled and (key == "Escape" or key == "P")) {')
+# The menu cursor is the browser's own (index.html, same image): a cursor drawn into the frame
+# trails the mouse by the whole render-and-present delay.
+patch_resource('Scripts/Gui/UIFramework/UIFramework.as',
+               'renderer.DrawImage(image, Vector2(pos.x - hotSpot.x, pos.y - hotSpot.y));',
+               '// drawn by the browser (index.html #canvas cursor)')
 print(f'Prepared original runtime; {converted} script bindings use generic wrappers.')
