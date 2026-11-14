@@ -89,6 +89,14 @@ patch('Gui/StartupScreenHelper.cpp', '#include <Audio/ALDevice.h>', '#include <B
 # UI text input are handled before this branch, so typing "p" is unaffected.
 patch('Client/Client_Input.cpp', 'if (name == "Escape") {',
       'if (name == "Escape" || (EqualsIgnoringCase(name, "p") && !cg_debugCorpse)) {')
+# Ctrl (the default crouch key) + W (walk forward) is the browser's close-tab shortcut, which
+# pages cannot cancel. cg_toggleCrouch (on by default, Setup > Controls > Toggle Crouch) makes
+# a tap of the crouch key switch crouching on and off, so it need not be held while walking.
+patch('Client/Client_Input.cpp', 'DEFINE_SPADES_SETTING(cg_keyCrouch, "Control");',
+      'DEFINE_SPADES_SETTING(cg_keyCrouch, "Control");\nDEFINE_SPADES_SETTING(cg_toggleCrouch, "1");')
+patch('Client/Client_Input.cpp', '\t\t\t\t\t\tplayerInput.crouch = down;',
+      '\t\t\t\t\t\tif (!cg_toggleCrouch)\n\t\t\t\t\t\t\tplayerInput.crouch = down;\n'
+      '\t\t\t\t\t\telse if (down)\n\t\t\t\t\t\t\tplayerInput.crouch = !playerInput.crouch;')
 patch('Gui/StartupScreenHelper.cpp', '#include <Audio/YsrDevice.h>', '')
 patch('Gui/StartupScreenHelper.cpp', 'audio::ALDevice::', 'audio::BrowserAudio::')
 patch('Gui/StartupScreenHelper.cpp', 'audio::YsrDevice::TryLoadYsr()', 'false')
@@ -283,6 +291,10 @@ def patch_resource(path, before, after):
     if before not in text:
         raise RuntimeError(f'Upstream context changed: {path}: {before[:50]}')
     file.write_text(text.replace(before, after), encoding='utf-8')
+patch_resource('Scripts/Gui/Preferences.as',
+               '            layouter.AddControl(_Tr("Preferences", "Crouch"), "cg_keyCrouch");\n',
+               '            layouter.AddControl(_Tr("Preferences", "Crouch"), "cg_keyCrouch");\n'
+               '            layouter.AddToggleField(_Tr("Preferences", "Toggle Crouch"), "cg_toggleCrouch");\n')
 menu = 'Scripts/Gui/Client/Menu.as'
 patch_resource(menu, 'float winW = 180.f, winH = 32.f * 4.f - 2.f;', 'float winW = 300.f, winH = 32.f * 6.f - 2.f;')
 patch_resource(menu, """                @button.Activated = spades::ui::EventHandler(this.OnDisconnect);
