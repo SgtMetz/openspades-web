@@ -292,10 +292,23 @@ if (typeof window !== 'undefined') {
   document.documentElement.classList.toggle('touch', touch.enabled);
   const pad = document.getElementById('touch-controls'), stick = document.getElementById('touch-stick');
   const knob = document.getElementById('touch-knob'), textBar = document.getElementById('touch-text-bar');
-  const press = name => { const n = (touch.held.get(name) || 0) + 1; touch.held.set(name, n); if (n === 1) touch.queue.push('+' + name); };
+  // The game reads input once per world tick (1/60 s) and only sees a press that is still down at a tick. A quick tap
+  // on a phone (low frame rate) delivered press and release in the same poll, so the game never saw it: blocks (placed
+  // on the press) didn't place and the spade only half-dug. A key now stays down at least MIN_HOLD_MS.
+  const MIN_HOLD_MS = 120, pressedAt = new Map();
+  const press = name => {
+    const pending = touch.held.get(name) === 0; // released a moment ago but still down in the game: keep it down
+    const n = (touch.held.get(name) || 0) + 1; touch.held.set(name, n);
+    if (n === 1 && !pending) { touch.queue.push('+' + name); pressedAt.set(name, performance.now()); }
+  };
   const release = name => {
     const n = (touch.held.get(name) || 0) - 1;
-    if (n > 0) touch.held.set(name, n); else if (touch.held.delete(name)) touch.queue.push('-' + name);
+    if (n > 0) { touch.held.set(name, n); return; }
+    const wait = MIN_HOLD_MS - (performance.now() - (pressedAt.get(name) || 0));
+    const up = () => { if (touch.held.get(name) === 0) { touch.held.delete(name); touch.queue.push('-' + name); } };
+    if (!touch.held.has(name)) return;
+    touch.held.set(name, 0); // released, up not sent yet
+    if (wait > 0) setTimeout(up, wait); else up();
   };
   const tap = name => { if (!touch.held.has(name)) touch.queue.push('+' + name, '-' + name); };
   const keyName = el => el.dataset.key === 'Space' ? ' ' : el.dataset.key;

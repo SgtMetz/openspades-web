@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-visual"><title>OpenSpades — Original Client</title>
+<style>html,body{margin:0;width:100%;height:100%;background:#000;color:#fff;font:16px system-ui;overflow:hidden}
+#canvas,#native-view,#native-gl-view{position:fixed;left:0;top:0;display:block;outline:0}#native-view,#native-gl-view{pointer-events:none}
+/* Menu cursor: the game's arrow (Gfx/UI/Cursor.png, hotspot 8,8) shown by the browser, so it follows
+   the mouse without frame latency; the game no longer draws it (prepare.py). Hidden while pointer-locked. */
+#canvas{cursor:url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAA2RJREFUeNrsl19IU1Ecx3fv5t3m3NZclmH2Z9hyIRRRLyEoIdFDsJIeQhxE0JIIoXqwHnwJ9EEiDObDBPNBQsUeFCKhF91DLzUxRYeCRAg5YiS1XLnldvv+9HdhyPwz78SHOvDh7Jx7vOd7fuf35yrIsqzZyyZq9rj9F7DnAnTrJwRBWO3SUBp5a2o7L83GsXUZ5mhTLchjC9GmEkiCBFjZrpCdCtDw5gWiKBp1Op0xkUj84Lk4iLKQ1G75AM3pwbLX670Rj8dnmpubn2J8jESBQmBkKwmqFdB9pcMnLQKl3d3dr+W1tjwyMhK0WCw3Me+kZ8DMFhS2eudmiJv4wHGXy7Uf/SB4UF1dPR8KhR47HI7rGFvYEvkbiVBzBYqAIoPB8Af9OAiAJyUlJW+mp6e9VVVVt1kAYVIjYiMBhF6SJHq+BL6BWeCHqBejo6Pu+vr6exjbWYSFI0XMRRQoAkTOCTKH4G/wGbwE33t6eu5arVaho6PjGT9PcmTIjKowFNZ8adUr0027DMLgLUWEz+drggi5tbW1idflsRBZzRUoJ0glk0k5w90KfFISstDS0nILEdKFq8nn/CDkIhFRw/50GI2BvV3iE9pjsZhzcnLy7OLi4hckqyWMV5xOZyHmFrL1A90GFqATxpABaXwYnASH+IQFmD/ndrtNkUikF+N34BMnLyNfk+pqSAIiyIIk8Cq44/f7PcPDw9fw22Wz2Y4iCnQcHbSpLa1WyGoFyFxwvqZSqV/oi9vb2/UNDQ3h/v7+cowvUp5obGx0abVaK594Ja1QyblIxfRiYyAQeDUwMDCE32fAJZPJ9CgcDo9jXS+Y8ng8PsyTqGL+u6xTcSYBIpt1X0VFRbndbj/IfnAaXGhraxvCuvdgcGxs7APmrgAH1wYhFwKUeDZyr+cqSEJOoN3HulnQBWbq6uqeY74MHFCcWq0ARYSYVnJFDsUj4HxfX18Aaz+SJSYmJihFV3IFlXIlIFPTcu4vrampechlWo5Go3Gz2XyZI0G/mwIEtgL5Q1lnZyc5ojw3NxfC+BT5zE4sIKzflAvQZomrgP1Dqq2trZyfn18IBoNTHIYxCsVsPkqzFaA4qIHF/OSxxNWS8kByNwWkf7CI65KXUo5Vf5Zvmbv4pOo/SDNZ4J/71+yvAAMAqIh4HgAXqgYAAAAASUVORK5CYII=) 8 8,default!important}[hidden]{display:none!important}
+#native-status{position:fixed;inset:40% 10%;text-align:center;pointer-events:none;white-space:pre-wrap}
+nav{position:fixed;right:8px;top:8px;opacity:.4;z-index:2}nav:hover{opacity:1}
+button,select{background:#202020;color:white;border:1px solid #777;border-radius:4px;padding:8px;cursor:pointer}
+/* Startup dialog (browser.js askName: player name before joining a server directly). */
+#native-start{position:fixed;inset:0;z-index:5;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:#000;padding:16px;overflow:auto}
+#native-start h2{margin:0 0 4px;font-size:22px}
+.native-start-options{display:flex;flex-direction:column;gap:6px;width:min(420px,100%)}
+.native-start-options label{display:grid;grid-template-columns:auto 1fr;column-gap:10px;align-items:center;padding:10px 12px;border:1px solid #555;border-radius:6px;background:#151515;cursor:pointer}
+.native-start-options label:has(input:checked){border-color:#bcd;background:#1f2a33}
+.native-start-options small{grid-column:2;opacity:.7;font-size:13px}
+.native-start-note{margin:0;font-size:13px;opacity:.6;text-align:center}
+#native-start input[type=text]{width:min(320px,100%);font-size:18px;padding:10px;background:#151515;color:#fff;border:1px solid #777;border-radius:6px}
+#native-start button{min-width:160px;font-size:17px;padding:10px 20px;background:#2d4a2d;border-color:#8a8}
+dialog{background:#151515;color:white;border:1px solid #777;max-width:90vw;max-height:80vh}#native-file-list{display:flex;flex-direction:column;gap:8px;margin:16px 0}
+.helper-dialog{max-width:min(460px,90vw);line-height:1.4}.helper-dialog .helper-download{display:inline-block;margin:4px 0 8px;padding:8px 14px;background:#2d6cdf;color:white;text-decoration:none;border-radius:4px}.helper-dialog .helper-status{color:#bbb;font-size:.9em}.helper-dialog .helper-status.ok{color:#7d7}
+/* Touch devices only (browser.js): on-screen controls while playing, text entry bar while typing. */
+html.touch-playing nav{display:none}
+#touch-controls{position:fixed;inset:0;z-index:3;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+#touch-controls button,#touch-text-bar button{color:#fff;background:rgba(15,22,18,.6);border:1px solid #d7e6d266;border-radius:9px;min-height:44px;min-width:46px;font:14px/1.1 system-ui,sans-serif;touch-action:none;padding:8px}
+#touch-controls button.held{background:rgba(138,174,115,.8);border-color:#e6f8d7}
+.touch-top{position:absolute;top:max(8px,env(safe-area-inset-top));left:max(10px,env(safe-area-inset-left));display:flex;gap:5px;flex-wrap:wrap;max-width:calc(100% - 20px)}
+#touch-stick{position:absolute;left:max(22px,env(safe-area-inset-left));bottom:max(60px,calc(env(safe-area-inset-bottom) + 48px));width:128px;height:128px;border:2px solid #d7e6d255;background:#10181044;border-radius:50%;display:grid;place-items:center}
+#touch-knob{display:block;width:48px;height:48px;border-radius:50%;background:#d7e6d277;border:1px solid #e6f8d7;pointer-events:none}
+.touch-actions{position:absolute;right:max(12px,env(safe-area-inset-right));bottom:max(56px,calc(env(safe-area-inset-bottom) + 46px));width:160px;display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.touch-actions .touch-fire{grid-column:span 2;min-height:64px;background:rgba(138,85,38,.75);border-color:#ecc38a}
+.touch-tools{position:absolute;bottom:max(6px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);display:flex;gap:5px}
+/* The text bar stays in the page while hidden (invisible, not display:none) so Chat can focus its field in the same tap. */
+#touch-text-bar{position:fixed;z-index:4;top:max(8px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);display:flex;gap:6px;align-items:center;width:min(560px,calc(100vw - 20px))}
+#touch-text-bar[hidden]{display:flex!important;opacity:0;pointer-events:none}
+#touch-text{flex:1;min-width:0;height:44px;box-sizing:border-box;font:16px system-ui,sans-serif;color:#fff;background:rgba(15,22,18,.85);border:1px solid #d7e6d299;border-radius:9px;padding:0 12px;outline:0}
+#touch-text:focus{border-color:#e6f8d7}html:not(.touch) #touch-text-bar{display:none!important}
+#touch-rotate{display:none;position:fixed;left:0;right:0;bottom:max(8px,env(safe-area-inset-bottom));text-align:center;font-size:14px;opacity:.75;pointer-events:none}
+@media (orientation:portrait){html.touch #touch-rotate{display:block}}
+@media (max-height:420px){#touch-stick{width:108px;height:108px}.touch-actions{width:150px}.touch-actions button{min-height:40px}.touch-actions .touch-fire{min-height:52px}}</style></head>
+<body>
+<!-- #canvas receives input and is transferred to the client thread (WebGL); #native-view shows the frames. -->
+<canvas id="canvas" width="1024" height="640" tabindex="0" aria-label="OpenSpades original client"></canvas>
+<canvas id="native-view" width="1024" height="640" aria-hidden="true"></canvas>
+<p id="native-status">Loading original OpenSpades client…</p>
+<nav><label>Graphics <select id="native-quality" aria-label="Graphics quality"><option>Auto</option></select></label></nav>
+<div id="touch-controls" hidden aria-label="Touch game controls">
+ <div class="touch-top"><button data-tap="Escape">Menu</button><button data-tap="T">Chat</button><button data-key="Tab">Scores</button><button data-tap="M">Map</button><button data-tap="R">Reload</button><button data-tap="E">Pick color</button><button data-tap="Left">◀</button><button data-tap="Right">▶</button><button id="touch-fullscreen" hidden aria-label="Fullscreen">⛶</button></div>
+ <div id="touch-stick" aria-label="Movement joystick"><span id="touch-knob"></span></div>
+ <div class="touch-tools"><button data-tap="1">Spade</button><button data-tap="2">Block</button><button data-tap="3">Gun</button><button data-tap="4">Grenade</button></div>
+ <div class="touch-actions"><button data-key="RightMouseButton">Aim</button><button data-key="Space">Jump</button><button data-key="Control">Crouch</button><button data-key="Shift">Sprint</button><button data-key="LeftMouseButton" class="touch-fire">Fire</button></div>
+</div>
+<div id="touch-text-bar" hidden><input id="touch-text" type="text" enterkeyhint="send" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="Text input"><button id="touch-enter">Enter</button><button id="touch-escape">Esc</button></div>
+<p id="touch-rotate">Turn your device sideways for more room.</p>
+<dialog id="native-files"><h2>Saved files</h2><p>Maps, screenshots, demos, logs and configuration saved by OpenSpades (the desktop user directory).</p><div id="native-file-list"></div><button id="native-files-close">Close</button></dialog>
+
+<script src="debug-log.js"></script><script>var Module=window.Module||{};if(!crossOriginIsolated){document.getElementById('native-status').textContent='This build needs a server with cross-origin isolation enabled.';}</script><script src="full-client.js"></script></body></html>
