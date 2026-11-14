@@ -1,6 +1,6 @@
 // Separate, local-only server for the original threaded client. No production changes.
 import http from 'node:http';
-import {createReadStream, mkdirSync, appendFileSync} from 'node:fs';
+import {createReadStream, mkdirSync, appendFileSync, writeFileSync} from 'node:fs';
 import {stat} from 'node:fs/promises';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -21,6 +21,8 @@ const types={'.js':'text/javascript','.html':'text/html; charset=utf-8','.wasm':
 const server=http.createServer(async(req,res)=>{
   try {
     if(req.url==='/__log'&&req.method==='POST'){let body='';req.setEncoding('utf8');req.on('data',c=>{body+=c;if(body.length>4e6)req.destroy();});req.on('end',()=>{try{const j=JSON.parse(body);writeLog(String(j.session),j.lines.map(String));}catch(e){console.log('[log] bad post',e.message);}res.writeHead(204);res.end();});return;}
+    // Crash reports (crash-report.js): one JSON file each in browser/logs/.
+    if(req.url==='/__crash'&&req.method==='POST'){let body='';req.setEncoding('utf8');req.on('data',c=>{body+=c;if(body.length>2e6)req.destroy();});req.on('end',()=>{try{const j=JSON.parse(body);const id=String(j.id||Date.now()).replace(/[^\w-]/g,'_');const file=path.join(logDir,`crash-${id}.json`);writeFileSync(file,JSON.stringify(j,null,1));console.log(`[crash] ${j.kind}: ${String(j.reason).slice(0,200)} -> ${file}`);res.writeHead(200,{'Content-Type':'application/json'});res.end(JSON.stringify({id}));}catch(e){res.writeHead(400);res.end();}});return;}
     const name=decodeURIComponent(new URL(req.url,'http://localhost').pathname);
     if(name==='/'){res.writeHead(302,{Location:'/full/'});res.end();return;}
     const file=path.resolve(root,'.'+(name.endsWith('/')?name+'index.html':name));

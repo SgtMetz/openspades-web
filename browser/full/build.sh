@@ -11,4 +11,5 @@ fi
 tail -n 4 build/compile.log
 cp index.html ../dist/full/index.html
 cp debug-log.js ../dist/full/debug-log.js
+cp crash-report.js ../dist/full/crash-report.js
 echo '{"type":"commonjs"}' > ../dist/full/package.json
