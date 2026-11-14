@@ -151,6 +151,10 @@ int main(int argc, char **argv) {
 			}
 		} else {
 			StartClient(ServerAddress(autoconnectHost, protocol));
+			// Desktop quits when an autoconnect session ends; in the browser that leaves a dead
+			// page, so Disconnect (or a kick) goes to the main menu instead.
+			SPLog("Client closed; starting main screen");
+			StartMainScreen();
 		}
 		Settings::GetInstance()->Flush();
 		FileManager::Close();
