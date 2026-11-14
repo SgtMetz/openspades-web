@@ -1,0 +1,16 @@
+[package]
+name = "openspades-helper"
+version = "1.0.0"
+edition = "2021"
+license = "GPL-3.0-or-later"
+description = "Lets the OpenSpades web client reach game servers over UDP from the player's own connection"
+
+[[bin]]
+name = "OpenSpadesHelper"
+path = "src/main.rs"
+
+[profile.release]
+opt-level = "s"
+lto = true
+strip = true
+panic = "abort"

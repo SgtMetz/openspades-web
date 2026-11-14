@@ -20,6 +20,13 @@ if (typeof window !== 'undefined') {
     else if (/^(v=)?0?\.?7[56]$/.test(part)) args.push(part);
     else if (part === 'verify-gl') args.push('--verify-gl'); // automated headless check only
   }
+  // A hosting page may name a server to join directly instead of the main menu:
+  // <meta name="openspades-autoconnect" content="aos://host:port">. ?menu opens the main menu anyway.
+  const autoconnect = document.querySelector('meta[name="openspades-autoconnect"]')?.content || '';
+  if (!args.some(a => a.startsWith('aos://')) && !args.includes('--verify-gl') &&
+      !/(^|[?&])menu(=1)?($|&)/.test(location.search) && /^aos:\/\/[\w.-]+(:\d+)?$/.test(autoconnect))
+    args.push(autoconnect);
+  const joiningDirectly = args.some(a => a.startsWith('aos://'));
   Module['arguments'] = args;
 
   // ---- Presentation -------------------------------------------------------------------
@@ -236,13 +243,16 @@ if (typeof window !== 'undefined') {
   addEventListener('wheel', e => { if (!e.target.closest?.('dialog[open], #native-start')) e.preventDefault(); }, {passive: false, capture: true});
   canvas.addEventListener('pointerdown', () => canvas.focus());
   const textField = document.getElementById('touch-text');
+  // Page text fields (the saved-files dialog, the touch text bar, the startup name prompt) keep
+  // normal typing: Firefox inserts characters on keypress, so cancelling it there blanks the field.
+  const pageTyping = e => !!document.querySelector('dialog[open]') || e.target === textField || !!e.target.closest?.('#native-start');
   addEventListener('keydown', e => {
-    if (document.querySelector('dialog[open]') || e.target === textField) return;
+    if (pageTyping(e)) return;
     const fn = /^F([1-9]|10)$/.test(e.key);
     if (e.key === 'Tab' || fn || e.key.startsWith('Arrow') || e.key === 'Backspace' ||
         e.altKey || (e.ctrlKey && !/^[cvx]$/i.test(e.key))) e.preventDefault();
   }, {capture: true});
-  addEventListener('keypress', e => { if (!document.querySelector('dialog[open]') && e.target !== textField) e.preventDefault(); }, {capture: true});
+  addEventListener('keypress', e => { if (!pageTyping(e)) e.preventDefault(); }, {capture: true});
 
   // ---- Desktop or touch device --------------------------------------------------------
   // Desktop input is unchanged. Phones and tablets get on-screen controls while the game takes
@@ -412,6 +422,54 @@ if (typeof window !== 'undefined') {
     u8.set(data, slot + 4);
     Atomics.store(u32, h, (head + 1) >>> 0);
   }
+  // ---- OpenSpades Helper (browser/helper): UDP from the player's own connection ------------
+  // Some servers ban the hosting relay's data-centre addresses. A hosting page can offer the helper:
+  // <meta name="openspades-helper" content="download page URL"> and, optionally,
+  // <meta name="openspades-helper-skip" content="host host ..."> for servers that never need it.
+  // When the helper answers on 127.0.0.1 the game traffic goes through it; otherwise joining any
+  // other server goes through the relay as before and a dialog offers the download. The page only
+  // looks for the helper once the player has seen that dialog (Chrome asks before a site may reach
+  // apps on the computer, and players who never need the helper should not be asked).
+  const helperPage = document.querySelector('meta[name="openspades-helper"]')?.content || '';
+  const helperSkip = new Set((document.querySelector('meta[name="openspades-helper-skip"]')?.content || '').split(/[\s,]+/).filter(Boolean));
+  const HELPER = 'http://127.0.0.1:32880', HELPER_KNOWN = 'openspades-helper-known';
+  let helperUp = false, helperChecking = null, helperDialog = null;
+  const helperKnown = () => { try { return localStorage.getItem(HELPER_KNOWN) === '1'; } catch (e) { return false; } };
+  function checkHelper() {
+    return helperChecking ||= fetch(HELPER + '/health', {mode: 'cors', cache: 'no-store', signal: AbortSignal.timeout(1500)})
+      .then(r => r.json()).then(j => j?.helper === 'openspades', () => false)
+      .then(up => {
+        helperUp = up; helperChecking = null;
+        if (up) try { localStorage.setItem(HELPER_KNOWN, '1'); } catch (e) {}
+        return up;
+      });
+  }
+  if (helperPage && helperKnown()) checkHelper();
+  const wantsHelper = host => !!helperPage && !helperSkip.has(host);
+  function offerHelper() {
+    if (helperDialog) return;
+    const d = helperDialog = document.createElement('dialog');
+    d.className = 'helper-dialog';
+    const h = document.createElement('h2'); h.textContent = helperKnown() ? 'Start the OpenSpades Helper' : 'Get the OpenSpades Helper';
+    const p = document.createElement('p');
+    p.textContent = 'Some servers block web players because the web game connects through a data centre. ' +
+      'The free OpenSpades Helper lets the game connect from your own internet connection, like the desktop game. ' +
+      'Without it you can still try: this server may work.';
+    const a = document.createElement('a');
+    a.href = helperPage; a.target = '_blank'; a.rel = 'noopener'; a.textContent = 'Download the helper (Windows)';
+    a.className = 'helper-download';
+    const status = document.createElement('p'); status.className = 'helper-status';
+    status.textContent = 'Helper not running. Open it, keep its window open, then join the server again.';
+    const close = document.createElement('button'); close.textContent = 'Close'; close.onclick = () => d.close();
+    d.append(h, p, a, status, close);
+    // Look for the helper while the dialog is open (the first look may make the browser ask for permission).
+    const poll = setInterval(() => checkHelper().then(up => {
+      if (up) { status.textContent = 'Helper is running. Join the server again to connect through it.'; status.classList.add('ok'); }
+    }), 2000);
+    d.onclose = () => { clearInterval(poll); d.remove(); helperDialog = null; };
+    document.body.append(d); d.showModal();
+  }
+
   Module['osNetSend'] = (id, host, port, bytes) => {
     const key = host + ':' + port;
     let net = nets[id];
@@ -419,13 +477,18 @@ if (typeof window !== 'undefined') {
       closeNet(id);
       net = nets[id] = {key, pending: [], closed: false};
       const origin = location.origin.replace(/^http/, 'ws');
-      const ws = net.ws = new WebSocket((Module['relayUrl'] || self.osRelayUrl || origin) + '/relay?host=' + encodeURIComponent(host) + '&port=' + port);
+      const viaHelper = wantsHelper(host) && helperUp;
+      if (wantsHelper(host)) { if (!helperUp) offerHelper(); checkHelper(); }
+      const base = viaHelper ? HELPER.replace(/^http/, 'ws') : (Module['relayUrl'] || self.osRelayUrl || origin);
+      const ws = net.ws = new WebSocket(base + '/relay?host=' + encodeURIComponent(host) + '&port=' + port);
+      if (viaHelper) console.log('[net] ' + key + ' through the OpenSpades Helper');
       ws.binaryType = 'arraybuffer';
       ws.onopen = () => { for (const d of net.pending.splice(0)) ws.send(d); };
       ws.onmessage = e => { if (!net.closed && nets[id] === net) deliver(id, new Uint8Array(e.data)); };
       const fail = why => {
         if (net.closed) return;
         net.closed = true; net.pending.length = 0;
+        if (viaHelper && why === 'failed') helperUp = false; // helper gone: the next join looks again
         console.warn('[net] relay to ' + key + ' ' + why);
       };
       ws.onerror = () => fail('failed');
@@ -447,13 +510,13 @@ if (typeof window !== 'undefined') {
   Module['osNetClose'] = id => { closeNet(id); delete rings[id]; };
 
   // ---- Graphics quality (replaces the desktop startup window) --------------------------
-  // The game starts at the main menu. Before it starts, a short GPU test picks one of the original
-  // launcher's quality presets (StartupScreen/ConfigViewTabs.as). The result is remembered per GPU,
-  // so presets are written once and later changes (console) are kept until the GPU changes.
-  // The Graphics menu on the page (top right) picks Auto (the tested tier) or a fixed preset; the
-  // tested tier is labelled "(recommended)". ?quality=low|medium|high|ultra forces a preset for one
-  // visit, ?quality=auto re-tests, ?launcher shows the original startup window instead. The window
-  // size follows the page on every start.
+  // The game starts at the main menu (or joins the page's autoconnect server). It starts on the
+  // original launcher's Low preset (StartupScreen/ConfigViewTabs.as); the in-game menu (Esc) has a
+  // Graphics row that restarts the client at another preset. A short GPU test still records the
+  // recommended tier per GPU ("Auto" in the page's Graphics menu, top right, before the game starts).
+  // Presets are written only when the tier changes, so console tweaks survive restarts.
+  // ?quality=low|medium|high|ultra forces a preset for one visit, ?quality=auto re-tests, ?launcher
+  // shows the original startup window instead. The window size follows the page on every start.
   const post = (blur, lens, bloom, flare, flareDyn, color, dof, ssao) =>
     ({r_cameraBlur: blur, r_lens: lens, r_bloom: bloom, r_lensFlare: flare, r_lensFlareDynamic: flareDyn, r_colorCorrection: color, r_depthOfField: dof, r_ssao: ssao});
   const lights = (dl, shadows, physical) => ({r_dlights: dl, r_modelShadows: shadows, r_physicalLighting: physical});
@@ -527,10 +590,24 @@ void main(){ vec2 uv=gl_FragCoord.xy*0.003+seed; vec3 v=vec3(uv,seed);
     return [Math.round(w * fit), Math.round(h * fit)];
   }
   Module['preRun'] ||= [];
-  const QUALITY_KEY = 'openspades-full-quality', CHOICE_KEY = 'openspades-full-quality-choice', QUALITY_VERSION = 2;
+  // Low is the default; the player changes it in the in-game menu (Esc → Graphics), which restarts
+  // the client (osRequestQuality). A new key so every player starts on Low once.
+  const QUALITY_KEY = 'openspades-full-quality', CHOICE_KEY = 'openspades-full-quality-choice-2', QUALITY_VERSION = 2;
+  const DEFAULT_CHOICE = 'low';
   const tierName = t => t[0].toUpperCase() + t.slice(1);
   const loadJSON = key => { try { return JSON.parse(localStorage.getItem(key)); } catch { return null; } };
-  const savedChoice = () => { const c = localStorage.getItem(CHOICE_KEY); return tiers.includes(c) ? c : 'auto'; };
+  const savedChoice = () => { let c = null; try { c = localStorage.getItem(CHOICE_KEY); } catch {} return c === 'auto' || tiers.includes(c) ? c : DEFAULT_CHOICE; };
+  Module['osRequestQuality'] = tier => {
+    if (!tiers.includes(tier)) return;
+    try { localStorage.setItem(CHOICE_KEY, tier); sessionStorage.setItem(SKIP_MENU_KEY, '1'); } catch {}
+    status.hidden = false; status.textContent = `Switching graphics to ${tierName(tier)}…`;
+    Module['osSaveUserFiles']?.();
+    // Drop ?quality= by hand: URLSearchParams would re-encode an ?aos://host:port argument into a
+    // form the argument parser above no longer recognises, and the player would not rejoin.
+    const search = location.search.slice(1).split('&').filter(p => p && !/^quality=/.test(p)).join('&');
+    const href = location.pathname + (search ? '?' + search : '') + location.hash;
+    setTimeout(() => location.replace(href), 600); // let the saved settings reach IndexedDB
+  };
   // Graphics menu: changing it restarts the client (presets apply at startup, as with the desktop launcher).
   const picker = document.getElementById('native-quality');
   function fillPicker(recommended, current) {
@@ -549,47 +626,36 @@ void main(){ vec2 uv=gl_FragCoord.xy*0.003+seed; vec3 v=vec3(uv,seed);
       const v = picker.value;
       if (!confirm(`Switch graphics to ${tierName(v)}? The game restarts (you will be disconnected from any server).`)) { picker.value = savedChoice(); return; }
       try { localStorage.setItem(CHOICE_KEY, v); sessionStorage.setItem(SKIP_MENU_KEY, '1'); } catch {}
-      const url = new URL(location.href); url.searchParams.delete('quality');
-      location.replace(url.href);
+      const search = location.search.slice(1).split('&').filter(p => p && !/^quality=/.test(p)).join('&');
+      location.replace(location.pathname + (search ? '?' + search : '') + location.hash);
     });
   }
-  // Startup menu: after the device test and before the client starts, the player picks the quality
-  // (pre-selected: the saved choice, else Auto). Not shown for ?quality=, ?launcher, automated
-  // browsers (navigator.webdriver), or right after a restart from the Graphics menu above.
-  function askQuality(recommended) {
+  // Player name, asked once when the page joins a server directly (the main menu that normally
+  // asks is skipped). Later changes: Esc → Setup in game, which the page then leaves alone.
+  const NAME_KEY = 'openspades-full-name-asked';
+  let playerName = '';
+  const nameAsked = () => { try { return localStorage.getItem(NAME_KEY) === '1'; } catch { return true; } };
+  function askName() {
     return new Promise(resolve => {
       const panel = document.createElement('div');
       panel.id = 'native-start';
-      panel.setAttribute('role', 'dialog'); panel.setAttribute('aria-label', 'Graphics quality');
-      const choice = savedChoice();
-      const describe = {auto: 'Uses the tier the device test picked.', low: 'Fastest. No effects, smaller shadows and resolution.',
-        medium: 'Basic effects and water.', high: 'Most effects, sharper resolution.', ultra: 'Every effect, full resolution. Needs a fast GPU.'};
-      panel.innerHTML = '<h2>Graphics quality</h2><div class="native-start-options"></div>' +
-        '<p class="native-start-note">To change this later, reload the page.</p><button type="button">Start</button>';
-      const list = panel.querySelector('.native-start-options');
-      for (const t of ['auto', ...tiers]) {
-        const label = document.createElement('label');
-        const input = Object.assign(document.createElement('input'), {type: 'radio', name: 'native-start-quality', value: t, checked: t === choice});
-        const name = t === 'auto' ? `Auto (${tierName(recommended)})` : tierName(t) + (t === recommended ? ' (recommended)' : '');
-        const strong = document.createElement('strong'); strong.textContent = name;
-        const small = document.createElement('small'); small.textContent = describe[t];
-        label.append(input, strong, small);
-        label.addEventListener('dblclick', () => start());
-        list.append(label);
-      }
-      const button = panel.querySelector('button');
+      panel.setAttribute('role', 'dialog'); panel.setAttribute('aria-label', 'Player name');
+      panel.innerHTML = '<h2>Your player name</h2><input type="text" maxlength="15" autocomplete="nickname" spellcheck="false" aria-label="Player name">' +
+        '<p class="native-start-note">Shown to other players. Graphics start on Low: press Esc in game to change them.</p><button type="button">Play</button>';
+      const input = panel.querySelector('input'), button = panel.querySelector('button');
       const start = () => {
-        const v = panel.querySelector('input:checked')?.value || 'auto';
-        try { localStorage.setItem(CHOICE_KEY, v); } catch {}
+        // AoS names: printable ASCII, at most 15 characters; empty keeps the game's default.
+        const name = input.value.replace(/[^ -~]/g, '').trim().slice(0, 15);
+        try { localStorage.setItem(NAME_KEY, '1'); } catch {}
         removeEventListener('keydown', onKey, true);
         panel.remove();
-        resolve(v);
+        resolve(name);
       };
       const onKey = e => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); start(); } };
       button.addEventListener('click', start);
       addEventListener('keydown', onKey, true);
       document.body.append(panel);
-      (panel.querySelector('input:checked') || button).focus();
+      input.focus();
     });
   }
   Module['preRun'].push(() => {
@@ -608,11 +674,13 @@ void main(){ vec2 uv=gl_FragCoord.xy*0.003+seed; vec3 v=vec3(uv,seed);
         }
         let skipMenu = false;
         try { skipMenu = sessionStorage.getItem(SKIP_MENU_KEY) === '1'; sessionStorage.removeItem(SKIP_MENU_KEY); } catch {}
-        if (!tiers.includes(requested) && !Module['osShowLauncher'] && !navigator.webdriver && !skipMenu) {
+        // No startup quality menu: Low (or the player's in-game pick) applies at once. Joining a
+        // server directly asks for a player name once, since the main menu that asks is skipped.
+        if (joiningDirectly && !navigator.webdriver && !skipMenu && !nameAsked()) {
           status.hidden = true;
-          await askQuality(saved.recommended);
+          playerName = await askName();
           status.hidden = false;
-          status.textContent = 'Starting OpenSpades…';
+          status.textContent = 'Joining the server…';
         }
         const choice = savedChoice();
         tier = tiers.includes(requested) ? requested : choice !== 'auto' ? choice : saved.recommended;
@@ -625,6 +693,9 @@ void main(){ vec2 uv=gl_FragCoord.xy*0.003+seed; vec3 v=vec3(uv,seed);
       const settings = apply ? {...presets[tier]} : {};
       if (apply) settings.r_renderer = saved.software ? 'sw' : 'gl';
       [settings.r_videoWidth, settings.r_videoHeight] = videoSize(tier);
+      settings.cl_webQualityCurrent = tier; // shown pressed in the in-game Graphics row
+      settings.cl_webQuality = '';
+      if (playerName) { settings.cg_playerName = playerName; settings.cg_playerNameIsSet = 1; }
       // Debug: ?set=r_water:1,r_ssao:0 overrides individual settings for this start (A/B testing).
       for (const pair of (new URLSearchParams(location.search).get('set') || '').split(',')) {
         const m = /^(\w+):([\w.-]+)$/.exec(pair);

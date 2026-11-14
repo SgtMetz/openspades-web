@@ -135,6 +135,20 @@ patch('Gui/SDLRunner.cpp', 'DispatchQueue::GetThreadQueue()->ProcessQueue();',
       '\t\t\t\t\t}\n'
       '\t\t\t\t\tDispatchQueue::GetThreadQueue()->ProcessQueue();')
 patch('Gui/SDLRunner.cpp', 'bool absoluteMouseCoord = true;', 'bool absoluteMouseCoord = true;\n\t\t\t\tUint32 lastSettingsSave = SDL_GetTicks();')
+# In-game Graphics buttons (Menu.as above) set cl_webQuality; hand the pick to the page, which
+# saves it and restarts the client at that preset.
+patch('Gui/SDLRunner.cpp', '#include "SDLRunner.h"', '#include "SDLRunner.h"\nextern "C" void osweb_request_quality(const char *);')
+patch('Gui/SDLRunner.cpp', '\t\t\t\t\tif (SDL_GetTicks() - lastSettingsSave > 2000) {',
+      '\t\t\t\t\t{\n'
+      '\t\t\t\t\t\tstatic Settings::ItemHandle webQuality("cl_webQuality", nullptr);\n'
+      '\t\t\t\t\t\tconst std::string requested = webQuality;\n'
+      '\t\t\t\t\t\tif (!requested.empty()) {\n'
+      '\t\t\t\t\t\t\twebQuality = std::string();\n'
+      '\t\t\t\t\t\t\tSettings::GetInstance()->Flush();\n'
+      '\t\t\t\t\t\t\tosweb_request_quality(requested.c_str());\n'
+      '\t\t\t\t\t\t}\n'
+      '\t\t\t\t\t}\n'
+      '\t\t\t\t\tif (SDL_GetTicks() - lastSettingsSave > 2000) {')
 # Touch devices (browser.js): on-screen controls deliver the same key names, text and relative
 # mouse motion as desktop input, so bindings and sensitivity settings apply unchanged.
 patch('Gui/SDLRunner.cpp', '#include "SDLRunner.h"', '#include "SDLRunner.h"\n#include <cstdio>\n#include <cstdlib>\n'
@@ -270,7 +284,7 @@ def patch_resource(path, before, after):
         raise RuntimeError(f'Upstream context changed: {path}: {before[:50]}')
     file.write_text(text.replace(before, after), encoding='utf-8')
 menu = 'Scripts/Gui/Client/Menu.as'
-patch_resource(menu, 'float winW = 180.f, winH = 32.f * 4.f - 2.f;', 'float winW = 220.f, winH = 32.f * 5.f - 2.f;')
+patch_resource(menu, 'float winW = 180.f, winH = 32.f * 4.f - 2.f;', 'float winW = 300.f, winH = 32.f * 6.f - 2.f;')
 patch_resource(menu, """                @button.Activated = spades::ui::EventHandler(this.OnDisconnect);
                 AddChild(button);
             }
@@ -289,7 +303,47 @@ patch_resource(menu, """                @button.Activated = spades::ui::EventHan
                 slider.Bounds = AABB2(winX + 60.f, winY + 134.f, winW - 60.f - 44.f, 18.f);
                 AddChild(slider);
             }
+            {
+                spades::ui::Label label(Manager);
+                label.Text = _Tr("Preferences", "Graphics");
+                label.Alignment = Vector2(0.f, 0.5f);
+                label.Bounds = AABB2(winX, winY + 160.f, 60.f, 30.f);
+                AddChild(label);
+                // The running preset (browser.js sets cl_webQualityCurrent at startup) shows pressed.
+                ConfigItem current("cl_webQualityCurrent", "");
+                array<string> captions = {_Tr("Preferences", "Low"), _Tr("Preferences", "Medium"),
+                                          _Tr("Preferences", "High"), _Tr("Preferences", "Ultra")};
+                array<string> tiers = {"low", "medium", "high", "ultra"};
+                float bw = (winW - 60.f - 6.f) / 4.f;
+                for (uint i = 0; i < tiers.length(); i++) {
+                    spades::ui::Button button(Manager);
+                    button.Caption = captions[i];
+                    button.Toggle = true;
+                    button.Toggled = current.StringValue == tiers[i];
+                    button.Bounds = AABB2(winX + 60.f + (bw + 2.f) * float(i), winY + 160.f, bw, 30.f);
+                    if (i == 0) @button.Activated = spades::ui::EventHandler(this.OnQualityLow);
+                    if (i == 1) @button.Activated = spades::ui::EventHandler(this.OnQualityMedium);
+                    if (i == 2) @button.Activated = spades::ui::EventHandler(this.OnQualityHigh);
+                    if (i == 3) @button.Activated = spades::ui::EventHandler(this.OnQualityUltra);
+                    AddChild(button);
+                }
+            }
 """)
+# Graphics presets apply at startup (browser.js), so a pick here asks the page to restart the
+# client at that preset (cl_webQuality, polled by SDLRunner, see osweb_request_quality); with an
+# autoconnect address the player rejoins the same server.
+patch_resource(menu, '        private void OnDisconnect(spades::ui::UIElement @sender) { ui.shouldExit = true; }',
+               '        private void OnDisconnect(spades::ui::UIElement @sender) { ui.shouldExit = true; }\n'
+               '        private void RequestQuality(string tier) {\n'
+               '            ConfigItem current("cl_webQualityCurrent", "");\n'
+               '            if (current.StringValue == tier) return;\n'
+               '            ConfigItem request("cl_webQuality", "");\n'
+               '            request.StringValue = tier;\n'
+               '        }\n'
+               '        private void OnQualityLow(spades::ui::UIElement @sender) { RequestQuality("low"); }\n'
+               '        private void OnQualityMedium(spades::ui::UIElement @sender) { RequestQuality("medium"); }\n'
+               '        private void OnQualityHigh(spades::ui::UIElement @sender) { RequestQuality("high"); }\n'
+               '        private void OnQualityUltra(spades::ui::UIElement @sender) { RequestQuality("ultra"); }')
 patch_resource(menu, 'if (IsEnabled and key == "Escape") {', 'if (IsEnabled and (key == "Escape" or key == "P")) {')
 # The menu cursor is the browser's own (index.html, same image): a cursor drawn into the frame
 # trails the mouse by the whole render-and-present delay.

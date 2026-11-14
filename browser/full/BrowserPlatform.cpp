@@ -58,6 +58,13 @@ char *osweb_quality_settings() {
 		return stringToNewUTF8(lines.join('\n'));
 	});
 }
+// In-game Graphics buttons (prepare.py, Menu.as): the page saves the preset and restarts the
+// client with it (browser.js osRequestQuality).
+void osweb_request_quality(const char *tier) {
+	MAIN_THREAD_EM_ASM({
+		if (Module['osRequestQuality']) Module['osRequestQuality'](UTF8ToString($0));
+	}, tier);
+}
 int osweb_show_launcher() {
 	return MAIN_THREAD_EM_ASM_INT({ return Module['osShowLauncher'] ? 1 : 0; });
 }

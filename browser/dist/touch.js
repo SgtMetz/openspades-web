@@ -30,7 +30,7 @@ export class TouchControls {
     this.pointers.set(e.pointerId, p); p.target.setPointerCapture(e.pointerId);
     if (button) {
       button.classList.add('held');
-      if (button.dataset.mouse === '1') this.fire();
+      if (button.dataset.mouse === '1') this.fire?.(); // optional: main.js does not pass a fire callback
       this.rebuild();
       // Actions may open a menu and reset all pointers; capture is already established above.
       if (button.dataset.action) this.action(button.dataset.action);

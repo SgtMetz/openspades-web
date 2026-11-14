@@ -52,4 +52,9 @@ controls.setActive(false); controls.down(event(7,fire)); assert.equal(controls.b
 controls.action = () => controls.setActive(false); controls.setActive(true);
 controls.down(event(8,new Element({action:'menu'},'button')));
 assert.equal(controls.pointers.size,0); assert.equal(controls.buttons,0);
-console.log('PASS: phone/tablet detection, overrides, multitouch move/look/aim/fire/jump, independent releases, reset, menu transitions');
+
+// main.js constructs TouchControls without a fire callback; Fire / Use must still hold mouse button 1.
+const plain = new TouchControls(root, {look(){}, action(){}}, win); plain.setActive(true);
+plain.down(event(9, new Element({mouse:'1'},'button')));
+assert.equal(plain.buttons, 1);
+console.log('PASS: phone/tablet detection, overrides, multitouch move/look/aim/fire/jump, independent releases, reset, menu transitions, fire without callback');
