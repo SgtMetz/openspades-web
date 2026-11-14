@@ -47,7 +47,9 @@ if (typeof window !== 'undefined') {
   function viewportSize() {
     const el = document.documentElement, vv = window.visualViewport;
     const pick = (...v) => Math.min(...v.filter(x => x > 0)) || 0;
-    return [pick(innerWidth, el.clientWidth, vv && vv.width * vv.scale), pick(innerHeight, el.clientHeight, vv && vv.height * vv.scale)];
+    // minus the Report a bug bar below the game (index.html #os-report-bar; hidden, so 0, on touch devices)
+    const bar = document.getElementById('os-report-bar')?.offsetHeight || 0;
+    return [pick(innerWidth, el.clientWidth, vv && vv.width * vv.scale), Math.max(0, pick(innerHeight, el.clientHeight, vv && vv.height * vv.scale) - bar)];
   }
   function layout() {
     const [vw, vh] = viewportSize();

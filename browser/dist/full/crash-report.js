@@ -149,7 +149,8 @@ border-radius:5px;padding:9px 14px;font:15px system-ui,sans-serif;cursor:pointer
 #os-crash button:disabled{opacity:.5;cursor:default}#os-crash .status{min-height:1.4em;margin:10px 0 0;color:#bbb}#os-crash .status.ok{color:#7d7}
 #os-crash .status.bad{color:#f99}#os-crash small{color:#999}`;
   function screenFor({kind, reason, title, report, canResume}) {
-    shown?.remove();
+    const manual = kind === 'manual', closes = manual || kind === 'previous';
+    shown?.dispatchEvent(new Event('remove-listeners')); shown?.remove();
     if (!document.getElementById('os-crash-css')) {
       const s = document.createElement('style'); s.id = 'os-crash-css'; s.textContent = css; document.head.append(s);
     }
@@ -158,21 +159,28 @@ border-radius:5px;padding:9px 14px;font:15px system-ui,sans-serif;cursor:pointer
     const el = document.createElement('div');
     el.id = 'os-crash'; el.setAttribute('role', 'alertdialog'); el.setAttribute('aria-labelledby', 'os-crash-title');
     el.innerHTML = `<div class="box"><h2 id="os-crash-title"></h2><p class="why"></p>
-<p>${url ? 'Sending the crash report helps fix it. It holds the game\'s log (which includes your player name and the server you were on) and your browser and graphics card.' : 'Save the log to send it to whoever runs this site.'}</p>
-${url ? '<textarea placeholder="What were you doing when it happened? (optional)" maxlength="2000"></textarea>' : ''}
-<div class="row">${url ? '<button class="main send">Send crash report</button>' : ''}<button class="save">Save log</button><button class="copy">Copy log</button>
-${canResume ? '<button class="resume">Keep waiting</button>' : ''}<button class="${kind === 'previous' ? 'close' : 'reload'}">${kind === 'previous' ? 'Close' : 'Reload'}</button></div>
+<p>${manual ? 'Tell us what went wrong. The report also holds the game’s log (which includes your player name and the server you are on) and your browser and graphics card.' : url ? 'Sending the crash report helps fix it. It holds the game\'s log (which includes your player name and the server you were on) and your browser and graphics card.' : 'Save the log to send it to whoever runs this site.'}</p>
+${url || manual ? `<textarea placeholder="${manual ? 'What happened? What were you doing? (required)' : 'What were you doing when it happened? (optional)'}" maxlength="2000"></textarea>` : ''}
+<div class="row">${url ? `<button class="main send">${manual ? 'Send report' : 'Send crash report'}</button>` : ''}<button class="save">Save log</button><button class="copy">Copy log</button>
+${canResume ? '<button class="resume">Keep waiting</button>' : ''}<button class="${closes ? 'close' : 'reload'}">${closes ? 'Close' : 'Reload'}</button></div>
 <p class="status" aria-live="polite"></p></div>`;
     el.querySelector('h2').textContent = title;
     el.querySelector('.why').textContent = reason;
     const status = (text, cls = '') => { const s = el.querySelector('.status'); s.textContent = text; s.className = 'status ' + cls; };
-    const full = () => ({...report(), note: el.querySelector('textarea')?.value.trim() || ''});
+    const full = () => {
+      const note = el.querySelector('textarea')?.value.trim() || '';
+      const r = {...report(), note};
+      if (manual && note) r.reason = 'Player report: ' + note.split('\n')[0].slice(0, 200);
+      return r;
+    };
     const asText = r => [`OpenSpades crash report ${r.id}`, `kind: ${r.kind}`, `reason: ${r.reason}`, `page: ${r.url}`,
       `build: ${r.build || '-'}`, `when: ${new Date(r.time).toISOString()}`, `device: ${JSON.stringify(r.device)}`,
       r.note ? `note: ${r.note}` : '', '', '---- log ----', ...r.lines,
       ...Object.entries(r.gameLogs || {}).flatMap(([f, t]) => ['', `---- ${f} (last part) ----`, t])].join('\n');
     el.querySelector('.send')?.addEventListener('click', async e => {
-      const button = e.currentTarget; button.disabled = true; status('Sending…');
+      const button = e.currentTarget;
+      if (manual && !el.querySelector('textarea').value.trim()) { status('Write a few words about the problem first.', 'bad'); el.querySelector('textarea').focus(); return; }
+      button.disabled = true; status('Sending…');
       try {
         const r = full(), body = JSON.stringify(r);
         const res = await fetch(url, {method: 'POST', body, headers: {'Content-Type': 'application/json'}});
@@ -196,18 +204,22 @@ ${canResume ? '<button class="resume">Keep waiting</button>' : ''}<button class=
     });
     el.querySelector('.resume')?.addEventListener('click', () => { el.remove(); shown = null; lastChange = Date.now(); });
     el.querySelector('.reload')?.addEventListener('click', () => location.reload());
-    el.querySelector('.close')?.addEventListener('click', () => { el.remove(); shown = null; });
+    el.querySelector('.close')?.addEventListener('click', () => { el.dispatchEvent(new Event('remove-listeners')); el.remove(); shown = null; if (manual) document.getElementById('canvas')?.focus(); });
+    // Escape closes the report (wherever the focus is: after sending it is on the page, not in the box)
+    const onEscape = e => { if (e.key === 'Escape' && closes && shown === el) { e.stopPropagation(); e.preventDefault(); el.querySelector('.close').click(); } };
+    if (closes) { addEventListener('keydown', onEscape, true); el.addEventListener('remove-listeners', () => removeEventListener('keydown', onEscape, true)); }
     // keys typed here are not the game's
     for (const type of ['keydown', 'keyup', 'keypress']) el.addEventListener(type, e => e.stopPropagation());
     (document.body || document.documentElement).append(el);
     shown = el;
+    if (manual) el.querySelector('textarea')?.focus();
     return el;
   }
 
   let crashed = false;
   function crash(kind, reason, canResume = false) {
     if (crashed && kind === 'thread') return; // the abort already showed it
-    if (shown && !canResume && shown.dataset.kind !== 'stall' && shown.dataset.kind !== 'previous') return;
+    if (shown && !canResume && !['stall', 'previous', 'manual'].includes(shown.dataset.kind)) return;
     if (!canResume) { crashed = true; saving = false; forget(); }
     const time = Date.now(), id = session + (kind === 'stall' ? '-stall' : '');
     const show = () => {
@@ -232,6 +244,22 @@ ${canResume ? '<button class="resume">Keep waiting</button>' : ''}<button class=
       el.dataset.kind = 'previous';
     });
   }
+  // ---- The player's own report: the Report a bug button below the game (or in the corner on phones) -----------
+  let manualCount = 0;
+  function reportBug() {
+    if (shown && shown.dataset.kind !== 'manual') return; // a crash screen is already up
+    if (shown) { shown.querySelector('textarea')?.focus(); return; }
+    const time = Date.now(), id = `${session}-r${++manualCount}`;
+    const el = screenFor({kind: 'manual', title: 'Report a bug or crash', canResume: false,
+      reason: '',
+      report: () => ({id, kind: 'manual', reason: 'Player report', time, url: location.pathname + location.search, build: build(),
+        uptimeS: Math.round((time - started) / 1000), frames: Module.osPresentedFrames || 0, device: device(), lines: lines.slice(), gameLogs: gameLogs()})});
+    el.dataset.kind = 'manual';
+    el.querySelector('.why').hidden = true;
+  }
+  addEventListener('DOMContentLoaded', () => {
+    for (const b of document.querySelectorAll('.os-report-bug')) b.addEventListener('click', e => { e.currentTarget.blur(); reportBug(); });
+  });
   save(); // this session's record replaces the last one (already read into previous)
-  self.osCrashReport = {crash, lines};
+  self.osCrashReport = {crash, lines, reportBug};
 })();
