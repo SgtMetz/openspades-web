@@ -528,8 +528,41 @@ if (typeof window !== 'undefined') {
         if (up) try { localStorage.setItem(HELPER_KNOWN, '1'); } catch (e) {}
         return up;
       });
+        updateHelperBanner();
   }
-  if (helperPage && helperKnown()) checkHelper();
+  // A red banner on the main menu (no server connection open) while the helper isn't running, so players
+  // know before joining that the "[Needs Helper]" servers will refuse them. Players who never ran the helper
+  // are not probed (no permission prompt): the banner says to get it. Check again probes on request.
+  let helperBanner = null, helperBannerClosed = false, helperBannerPoll = 0;
+  function updateHelperBanner() {
+    const show = !!helperPage && !touch.enabled && !helperUp && !helperBannerClosed && !Object.keys(nets).length;
+    if (!show) {
+      helperBanner?.remove(); helperBanner = null;
+      clearInterval(helperBannerPoll); helperBannerPoll = 0;
+      return;
+    }
+    if (!helperBanner) {
+      const b = helperBanner = document.createElement('div');
+      b.id = 'helper-warning'; b.setAttribute('role', 'alert');
+      const text = document.createElement('span');
+      const a = document.createElement('a');
+      a.href = helperPage; a.target = '_blank'; a.rel = 'noopener'; a.textContent = 'Get the Helper (Windows)';
+      const again = document.createElement('button'); again.textContent = 'Check again';
+      again.onclick = () => { again.disabled = true; checkHelper().then(() => { again.disabled = false; }); };
+      const close = document.createElement('button'); close.textContent = '×'; close.title = 'Hide';
+      close.setAttribute('aria-label', 'Hide this warning');
+      close.onclick = () => { helperBannerClosed = true; updateHelperBanner(); };
+      b.append(text, a, again, close);
+      document.body.append(b);
+    }
+    helperBanner.firstChild.textContent = (helperKnown()
+      ? 'The OpenSpades Helper is not running.'
+      : 'You don’t have the OpenSpades Helper.') +
+      ' Servers marked [Needs Helper] will not let you join without it.';
+    // Players who have run it before: look every few seconds, so the banner goes once they start it.
+    if (helperKnown() && !helperBannerPoll) helperBannerPoll = setInterval(checkHelper, 5000);
+  }
+  if (helperPage && helperKnown()) checkHelper(); else updateHelperBanner();
   const wantsHelper = host => !!helperPage && !touch.enabled && !helperSkip.has(host); // the helper is a Windows app
   function offerHelper() {
     if (helperDialog) return;
@@ -563,6 +596,7 @@ if (typeof window !== 'undefined') {
       net = nets[id] = {key, pending: [], closed: false};
       const origin = location.origin.replace(/^http/, 'ws');
       const viaHelper = wantsHelper(host) && helperUp;
+      updateHelperBanner();
       if (wantsHelper(host)) { if (!helperUp) offerHelper(); checkHelper(); }
       const base = viaHelper ? HELPER.replace(/^http/, 'ws') : (Module['relayUrl'] || self.osRelayUrl || origin);
       const ws = net.ws = new WebSocket(base + '/relay?host=' + encodeURIComponent(host) + '&port=' + port);
@@ -593,6 +627,7 @@ if (typeof window !== 'undefined') {
     try { net.ws.close(); } catch (e) {}
   }
   Module['osNetClose'] = id => { closeNet(id); delete rings[id]; };
+    updateHelperBanner();
 
   // ---- Graphics quality (replaces the desktop startup window) --------------------------
   // The game starts at the main menu (or joins the page's autoconnect server). It starts on the

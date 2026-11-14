@@ -149,10 +149,27 @@ index 2d55cd9..01fa694 100644
  
  namespace spades {
 diff --git a/Sources/Gui/MainScreenHelper.cpp b/Sources/Gui/MainScreenHelper.cpp
-index 3e565af..f3a5fa2 100644
+index 3e565af..fba9c99 100644
 --- a/Sources/Gui/MainScreenHelper.cpp
 +++ b/Sources/Gui/MainScreenHelper.cpp
-@@ -110,18 +110,21 @@ namespace spades {
+@@ -67,6 +67,8 @@ namespace spades {
+ 		inline int GetPing() const { return mPing; }
+ 		inline int GetNumPlayers() const { return mPlayers; }
+ 		inline int GetMaxNumPlayers() const { return mMaxPlayers; }
++		// "pinned": true in the list (a hosting site's own server): always listed first.
++		bool pinned = false;
+ 	};
+ 
+ 	ServerItem::ServerItem(const std::string &name, const std::string &ip, const std::string &map,
+@@ -100,6 +102,7 @@ namespace spades {
+ 			maxPlayers = val["players_max"].asInt();
+ 			item =
+ 			  new ServerItem(name, ip, map, gameMode, country, version, ping, players, maxPlayers);
++			item->pinned = val["pinned"].asBool();
+ 		}
+ 		return item;
+ 	}
+@@ -110,18 +113,21 @@ namespace spades {
  		class MainScreenHelper::ServerListQuery final : public Thread {
  			Handle<MainScreenHelper> owner;
  			std::string buffer;
@@ -176,14 +193,13 @@ index 3e565af..f3a5fa2 100644
  					for (Json::Value::iterator it = root.begin(); it != root.end(); ++it) {
  						Json::Value &obj = *it;
  						std::unique_ptr<ServerItem> srv{ServerItem::Create(obj)};
-@@ -133,8 +136,45 @@ namespace spades {
+@@ -133,8 +139,45 @@ namespace spades {
  						}
  					}
  				}
 +				return resp;
 +			}
- 
--				ReturnResult(std::move(resp));
++
 +			void ProcessResponse() { ReturnResult(ParseList()); }
 +
 +			CURLcode Fetch(const std::string &url) {
@@ -205,7 +221,8 @@ index 3e565af..f3a5fa2 100644
 +				curl_easy_setopt(cHandle.get(), CURLOPT_CONNECTTIMEOUT, 30l);
 +				return curl_easy_perform(cHandle.get());
 +			}
-+
+ 
+-				ReturnResult(std::move(resp));
 +			// openspadesweb.app answers "?first=1" at once with only the owner's server (from its cached
 +			// list), so it shows while the full list, which waits on the master servers, loads.
 +			void QuickFirstList() {
@@ -223,7 +240,7 @@ index 3e565af..f3a5fa2 100644
  			}
  
  		public:
-@@ -142,30 +182,12 @@ namespace spades {
+@@ -142,30 +185,12 @@ namespace spades {
  
  			void Run() override {
  				try {
@@ -259,7 +276,7 @@ index 3e565af..f3a5fa2 100644
  					}
  				} catch (std::exception &ex) {
  					auto lst = stmp::make_unique<MainScreenServerList>();
-@@ -252,8 +274,10 @@ namespace spades {
+@@ -252,8 +277,10 @@ namespace spades {
  			auto newResult = resultCell.take();
  			if (newResult) {
  				result = std::move(newResult);
@@ -272,11 +289,44 @@ index 3e565af..f3a5fa2 100644
  				return true;
  			}
  
+@@ -289,6 +316,9 @@ namespace spades {
+ 				return NULL;
+ 
+ 			auto compareFavorite = [&](Item x, Item y) -> stmp::optional<bool> {
++				if (x->IsPinned() != y->IsPinned()) {
++					return x->IsPinned();
++				}
+ 				if (x->IsFavorite() && !y->IsFavorite()) {
+ 					return true;
+ 				} else if (!x->IsFavorite() && y->IsFavorite()) {
+@@ -412,6 +442,7 @@ namespace spades {
+ 			numPlayers = item->GetNumPlayers();
+ 			maxPlayers = item->GetMaxNumPlayers();
+ 			this->favorite = favorite;
++			pinned = item->pinned;
+ 		}
+ 
+ 		MainScreenServerItem::~MainScreenServerItem() { SPADES_MARK_FUNCTION(); }
 diff --git a/Sources/Gui/MainScreenHelper.h b/Sources/Gui/MainScreenHelper.h
-index a346729..ee4f333 100644
+index a346729..1a5afeb 100644
 --- a/Sources/Gui/MainScreenHelper.h
 +++ b/Sources/Gui/MainScreenHelper.h
-@@ -70,6 +70,8 @@ namespace spades {
+@@ -47,6 +47,7 @@ namespace spades {
+ 			int numPlayers;
+ 			int maxPlayers;
+ 			bool favorite;
++			bool pinned = false;
+ 
+ 		protected:
+ 			~MainScreenServerItem();
+@@ -64,12 +65,15 @@ namespace spades {
+ 			int GetNumPlayers() const { return numPlayers; }
+ 			int GetMaxPlayers() const { return maxPlayers; }
+ 			bool IsFavorite() const { return favorite; }
++			bool IsPinned() const { return pinned; }
+ 			void SetFavorite(bool favorite) { this->favorite = favorite; }
+ 		};
+ 
  		struct MainScreenServerList {
  			std::vector<Handle<MainScreenServerItem>> list;
  			std::string message;
