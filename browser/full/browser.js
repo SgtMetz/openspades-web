@@ -42,14 +42,28 @@ if (typeof window !== 'undefined') {
   const glCtx = /(^|[?&])present=2d(&|$)/.test(location.search) ? null : glView.getContext('bitmaprenderer');
   console.log('[present] ' + (glCtx ? 'bitmaprenderer' : '2d drawImage'));
   const showGL = on => { glView.hidden = !on; view.hidden = on; };
+  // The visible area: the smallest of the browser's measures. iPhone Safari and Chrome can report an innerWidth wider
+  // than the screen (in a frame, or with the toolbars moving), which cut off the sides of the game.
+  function viewportSize() {
+    const el = document.documentElement, vv = window.visualViewport;
+    const pick = (...v) => Math.min(...v.filter(x => x > 0)) || 0;
+    return [pick(innerWidth, el.clientWidth, vv && vv.width * vv.scale), pick(innerHeight, el.clientHeight, vv && vv.height * vv.scale)];
+  }
   function layout() {
-    const scale = Math.min(innerWidth / frameW, innerHeight / frameH);
+    const [vw, vh] = viewportSize();
+    if (!vw || !vh) return;
+    const scale = Math.min(vw / frameW, vh / frameH);
     const w = Math.floor(frameW * scale), h = Math.floor(frameH * scale);
     for (const c of [canvas, view, glView]) {
       c.style.width = w + 'px'; c.style.height = h + 'px';
-      c.style.left = Math.floor((innerWidth - w) / 2) + 'px'; c.style.top = Math.floor((innerHeight - h) / 2) + 'px';
+      c.style.left = Math.floor((vw - w) / 2) + 'px'; c.style.top = Math.floor((vh - h) / 2) + 'px';
     }
   }
+  // Rotation and Safari's toolbars settle after the resize event: lay out again once they have.
+  const relayout = () => { layout(); setTimeout(layout, 250); setTimeout(layout, 800); };
+  addEventListener('orientationchange', relayout);
+  window.visualViewport?.addEventListener('resize', relayout);
+  addEventListener('pageshow', relayout);
   function resizeView(w, h) {
     if (view.width !== w || view.height !== h) { view.width = w; view.height = h; }
     if (frameW !== w || frameH !== h) { frameW = w; frameH = h; layout(); }
@@ -302,6 +316,7 @@ if (typeof window !== 'undefined') {
   }
   pad.addEventListener('pointerdown', e => {
     if (!touch.active || e.button > 0) return;
+    if (e.target.closest('#touch-fullscreen')) return; // its own click handler (fullscreen needs the tap's end)
     e.preventDefault();
     const button = e.target.closest('button'), onStick = e.target.closest('#touch-stick');
     const kind = button ? 'button' : onStick ? 'stick' : 'look';
@@ -340,6 +355,24 @@ if (typeof window !== 'undefined') {
     // sending emulated mouse events, scrolling or zooming.
     canvas.style.touchAction = 'none';
     for (const type of ['touchstart', 'touchmove', 'touchend']) canvas.addEventListener(type, e => e.preventDefault(), {passive: false});
+    // Fullscreen, sideways (Android; iPhone Safari has no Fullscreen API for pages): on the first tap, and with the ⛶
+    // button. A touch grants the user activation it needs only when it ends, so this listens for touchend, not pointerdown.
+    const root = document.documentElement, fsButton = document.getElementById('touch-fullscreen');
+    const requestFs = root.requestFullscreen || root.webkitRequestFullscreen;
+    const fsElement = () => document.fullscreenElement || document.webkitFullscreenElement;
+    const enterFs = () => {
+      if (fsElement() || !requestFs) return;
+      Promise.resolve(requestFs.call(root, {navigationUI: 'hide'}))
+        .then(() => screen.orientation?.lock?.('landscape')).catch(() => {}).then(relayout);
+    };
+    if (requestFs && fsButton) {
+      fsButton.hidden = false;
+      fsButton.addEventListener('click', () => {
+        if (fsElement()) (document.exitFullscreen || document.webkitExitFullscreen).call(document)?.catch?.(() => {});
+        else enterFs();
+      });
+    }
+    if (requestFs) addEventListener('touchend', enterFs, {capture: true, once: true});
   }
   // Text entry (chat, player name, server address): the soft keyboard needs a real text field.
   // It keeps one placeholder character so a backspace on an otherwise empty field is still seen.
@@ -579,13 +612,15 @@ void main(){ vec2 uv=gl_FragCoord.xy*0.003+seed; vec3 v=vec3(uv,seed);
   function videoSize(tier) {
     const [ratioCap, pixelCap] = resolution[tier];
     // A page loaded in a hidden or zero-size frame reports 0x0; use the desktop default then.
-    let w = innerWidth || 1024, h = innerHeight || 640;
+    let [w, h] = viewportSize();
+    if (!w || !h) [w, h] = [1024, 640];
     if (touch.enabled && h > w) [w, h] = [h, w]; // phones play sideways
     const ratio = Math.min(devicePixelRatio || 1, ratioCap);
     w *= ratio; h *= ratio;
     // Keep the page's shape: shrink to the preset's pixel budget, or grow evenly to a usable minimum
-    // (the original UI needs about 640x360 in landscape).
-    const minimum = w >= h ? Math.max(640 / w, 360 / h) : Math.max(360 / w, 640 / h);
+    // (the original UI needs about 780x400 in landscape: the main menu's server list is 750 px wide, and phones
+    // rendering narrower than that cut off both sides of it).
+    const minimum = w >= h ? Math.max(780 / w, 400 / h) : Math.max(400 / w, 780 / h);
     const fit = Math.max(Math.min(1, Math.sqrt(pixelCap / (w * h))), minimum);
     return [Math.round(w * fit), Math.round(h * fit)];
   }
