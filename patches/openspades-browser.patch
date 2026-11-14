@@ -1,3 +1,69 @@
+diff --git a/Sources/Client/Client.cpp b/Sources/Client/Client.cpp
+index 72f1b2b..19ae88c 100644
+--- a/Sources/Client/Client.cpp
++++ b/Sources/Client/Client.cpp
+@@ -491,9 +491,9 @@ namespace spades {
+ 		void Client::SpawnPressed() {
+ 			WeaponType weap = limbo->GetSelectedWeapon();
+ 			int team = limbo->GetSelectedTeam();
++			if (team >= 2)
++				return; // spectating is not offered; a team must be picked first
+ 			inGameLimbo = false;
+-			if (team == 2)
+-				team = 255;
+ 
+ 			if (!world->GetLocalPlayer() || world->GetLocalPlayer()->GetTeamId() >= 2) {
+ 				// join
+diff --git a/Sources/Client/LimboView.cpp b/Sources/Client/LimboView.cpp
+index 6dc21f4..db14e01 100644
+--- a/Sources/Client/LimboView.cpp
++++ b/Sources/Client/LimboView.cpp
+@@ -58,9 +58,7 @@ namespace spades {
+ 			items.push_back(MenuItem(MenuTeam2,
+ 			                         AABB2(teamX, firstY + rowHeight, menuWidth, menuHeight),
+ 			                         w ? w->GetTeam(1).name : "Team 2"));
+-			items.push_back(MenuItem(MenuTeamSpectator,
+-			                         AABB2(teamX, firstY + rowHeight * 2.f, menuWidth, menuHeight),
+-			                         w ? w->GetTeam(2).name : "Spectator"));
++			// No spectator option: players must pick a team.
+ 
+ 			float weapX = left + 260.f;
+ 
+@@ -111,7 +109,6 @@ namespace spades {
+ 						switch (item.type) {
+ 							case MenuTeam1: selectedTeam = 0; break;
+ 							case MenuTeam2: selectedTeam = 1; break;
+-							case MenuTeamSpectator: selectedTeam = 2; break;
+ 							case MenuWeaponRifle: selectedWeapon = RIFLE_WEAPON; break;
+ 							case MenuWeaponSMG: selectedWeapon = SMG_WEAPON; break;
+ 							case MenuWeaponShotgun: selectedWeapon = SHOTGUN_WEAPON; break;
+@@ -136,8 +133,8 @@ namespace spades {
+ 			} else if ("3" == key) {
+ 				if (2 != selectedTeam) {
+ 					selectedWeapon = SHOTGUN_WEAPON;
++					client->SpawnPressed();
+ 				}
+-				client->SpawnPressed(); // if we have 3 and are already spec someone wants to spec..
+ 			}
+ 		}
+ 
+@@ -153,6 +150,8 @@ namespace spades {
+ 					case MenuWeaponRifle:
+ 					case MenuWeaponShotgun:
+ 					case MenuWeaponSMG:
++					case MenuSpawn:
++						// Until a team is picked (2 = none), there is nothing to spawn as.
+ 						if (selectedTeam == 2) {
+ 							item.visible = false;
+ 						}
+@@ -204,7 +203,6 @@ namespace spades {
+ 				switch (item.type) {
+ 					case MenuTeam1:
+ 					case MenuTeam2:
+-					case MenuTeamSpectator:
+ 						selected = selectedTeam == item.type;
+ 						index = selectedTeam == 2 ? (1 + item.type) : 0;
+ 						break;
 diff --git a/Sources/Client/Player.cpp b/Sources/Client/Player.cpp
 index 65c79b9..bede1f0 100644
 --- a/Sources/Client/Player.cpp

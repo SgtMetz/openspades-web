@@ -90,12 +90,12 @@ function syncTouch() {
   if (visible) {
     $('mobile-teams').hidden = !limbo.teams;
     document.querySelectorAll('[data-team]').forEach(b => {
-      const t = Number(b.dataset.team); b.textContent = t < 2 ? teamName(t) : 'Spectator';
+      const t = Number(b.dataset.team); b.textContent = teamName(t);
       b.setAttribute('aria-pressed', String(limbo.team === t));
     });
     $('mobile-weapons').hidden = limbo.team === 2;
     document.querySelectorAll('[data-weapon]').forEach(b => b.setAttribute('aria-pressed', String(limbo.weapon === Number(b.dataset.weapon))));
-    $('mobile-spawn').textContent = limbo.team === 2 ? 'Spectate' : 'Spawn';
+    $('mobile-spawn').hidden = limbo.team === 2;
   }
   document.querySelectorAll('.touch-tools button').forEach((b, i) => b.setAttribute('aria-pressed', String(i === requestedTool)));
   document.querySelector('[data-action="KeyE"]').hidden = mode !== 'offline';
@@ -322,7 +322,8 @@ function limboSpawn() {
     if (limbo.weapon !== state[21] || state[19]) setupOffline(limbo.weapon);
     closeLimbo(); lock(); return;
   }
-  const team = limbo.team === 2 ? 255 : limbo.team, weapon = limbo.weapon;
+  if (limbo.team === 2) return; // no spectating: a team must be picked first
+  const team = limbo.team, weapon = limbo.weapon;
   if (!state[28]) { const p = engine.stringToNewUTF8(settings.name || 'Deuce'); engine._os_net_join(team, weapon, p); engine._free(p); }
   else {
     const current = state[30] < 2 ? state[30] : 255;
@@ -590,7 +591,7 @@ document.addEventListener('keydown', e => {
     // LimboView::KeyEvent
     if (e.key === '1') { if (limbo.teams && limbo.team === 2) limbo.team = 0; else { limbo.weapon = 0; limboSpawn(); } }
     if (e.key === '2') { if (limbo.teams && limbo.team === 2) limbo.team = 1; else { limbo.weapon = 1; limboSpawn(); } }
-    if (e.key === '3') { if (limbo.team !== 2) limbo.weapon = 2; limboSpawn(); }
+    if (e.key === '3' && limbo.team !== 2) { limbo.weapon = 2; limboSpawn(); }
     return;
   }
   if (e.code === 'Escape' && dragLook && playing) { playing = false; setOverlay('menu'); return; }

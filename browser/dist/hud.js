@@ -412,13 +412,12 @@ export class Limbo {
     const list = [
       {type: 0, x: left + 10, y: firstY, w: mw, h: mh, text: teamNames[0]},
       {type: 1, x: left + 10, y: firstY + row, w: mw, h: mh, text: teamNames[1]},
-      {type: 2, x: left + 10, y: firstY + row * 2, w: mw, h: mh, text: 'Spectator'},
       {type: 3, x: left + 260, y: firstY, w: mw, h: mh, text: 'Rifle'},
       {type: 4, x: left + 260, y: firstY + row, w: mw, h: mh, text: 'SMG'},
       {type: 5, x: left + 260, y: firstY + row * 2, w: mw, h: mh, text: 'Shotgun'},
       {type: 6, x: left + 800 - 266, y: firstY + 4, w: 256, h: 64, text: 'Spawn'},
     ];
-    for (const it of list) it.visible = !(it.type >= 3 && it.type <= 5 && this.team === 2) && !(it.type <= 2 && !this.teams);
+    for (const it of list) it.visible = !(it.type >= 3 && this.team === 2) && !(it.type <= 2 && !this.teams);
     return list;
   }
   hit(W, H, teamNames, x, y) {
