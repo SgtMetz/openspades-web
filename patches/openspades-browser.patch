@@ -82,3 +82,140 @@ index 2d55cd9..01fa694 100644
  #include "Exception.h"
  
  namespace spades {
+diff --git a/Sources/Gui/MainScreenHelper.cpp b/Sources/Gui/MainScreenHelper.cpp
+index 3e565af..f3a5fa2 100644
+--- a/Sources/Gui/MainScreenHelper.cpp
++++ b/Sources/Gui/MainScreenHelper.cpp
+@@ -110,18 +110,21 @@ namespace spades {
+ 		class MainScreenHelper::ServerListQuery final : public Thread {
+ 			Handle<MainScreenHelper> owner;
+ 			std::string buffer;
++			// What the quick first request returned; kept if the full list then fails.
++			std::vector<Handle<MainScreenServerItem>> firstItems;
+ 
+ 			void ReturnResult(std::unique_ptr<MainScreenServerList> &&list) {
++				if (list->list.empty() && !firstItems.empty()) list->list = firstItems;
+ 				owner->resultCell.store(std::move(list));
+ 				owner = NULL; // release owner
+ 			}
+ 
+-			void ProcessResponse() {
++			std::unique_ptr<MainScreenServerList> ParseList() {
+ 				Json::Reader reader;
+ 				Json::Value root;
+ 				auto resp = stmp::make_unique<MainScreenServerList>();
+ 
+-				if (reader.parse(buffer, root, false)) {
++				if (reader.parse(buffer, root, false) && root.isArray()) {
+ 					for (Json::Value::iterator it = root.begin(); it != root.end(); ++it) {
+ 						Json::Value &obj = *it;
+ 						std::unique_ptr<ServerItem> srv{ServerItem::Create(obj)};
+@@ -133,8 +136,45 @@ namespace spades {
+ 						}
+ 					}
+ 				}
++				return resp;
++			}
+ 
+-				ReturnResult(std::move(resp));
++			void ProcessResponse() { ReturnResult(ParseList()); }
++
++			CURLcode Fetch(const std::string &url) {
++				buffer.clear();
++				std::unique_ptr<CURL, CURLEasyDeleter> cHandle{curl_easy_init()};
++				if (!cHandle) SPRaise("Failed to create cURL object.");
++				size_t (*curlWriteCallback)(void *, size_t, size_t, ServerListQuery *) =
++				  [](void *ptr, size_t size, size_t nmemb, ServerListQuery *self) -> size_t {
++					size_t numBytes = size * nmemb;
++					self->buffer.append(reinterpret_cast<char *>(ptr), numBytes);
++					return numBytes;
++				};
++				curl_easy_setopt(cHandle.get(), CURLOPT_USERAGENT, OpenSpades_VER_STR);
++				curl_easy_setopt(cHandle.get(), CURLOPT_URL, url.c_str());
++				curl_easy_setopt(cHandle.get(), CURLOPT_WRITEFUNCTION, curlWriteCallback);
++				curl_easy_setopt(cHandle.get(), CURLOPT_WRITEDATA, this);
++				curl_easy_setopt(cHandle.get(), CURLOPT_LOW_SPEED_TIME, 30l);
++				curl_easy_setopt(cHandle.get(), CURLOPT_LOW_SPEED_LIMIT, 15l);
++				curl_easy_setopt(cHandle.get(), CURLOPT_CONNECTTIMEOUT, 30l);
++				return curl_easy_perform(cHandle.get());
++			}
++
++			// openspadesweb.app answers "?first=1" at once with only the owner's server (from its cached
++			// list), so it shows while the full list, which waits on the master servers, loads.
++			void QuickFirstList() {
++				std::string url = cl_serverListUrl.CString();
++				if (url.find('?') != std::string::npos) return;
++				try {
++					if (Fetch(url + "?first=1") != CURLE_OK) return;
++					auto first = ParseList();
++					if (first->list.empty()) return;
++					firstItems = first->list;
++					first->partial = true;
++					owner->resultCell.store(std::move(first));
++				} catch (...) {
++				}
+ 			}
+ 
+ 		public:
+@@ -142,30 +182,12 @@ namespace spades {
+ 
+ 			void Run() override {
+ 				try {
+-					std::unique_ptr<CURL, CURLEasyDeleter> cHandle{curl_easy_init()};
+-					if (cHandle) {
+-						size_t (*curlWriteCallback)(void *, size_t, size_t, ServerListQuery *) =
+-						  [](void *ptr, size_t size, size_t nmemb,
+-						     ServerListQuery *self) -> size_t {
+-							size_t numBytes = size * nmemb;
+-							self->buffer.append(reinterpret_cast<char *>(ptr), numBytes);
+-							return numBytes;
+-						};
+-						curl_easy_setopt(cHandle.get(), CURLOPT_USERAGENT, OpenSpades_VER_STR);
+-						curl_easy_setopt(cHandle.get(), CURLOPT_URL, cl_serverListUrl.CString());
+-						curl_easy_setopt(cHandle.get(), CURLOPT_WRITEFUNCTION, curlWriteCallback);
+-						curl_easy_setopt(cHandle.get(), CURLOPT_WRITEDATA, this);
+-						curl_easy_setopt(cHandle.get(), CURLOPT_LOW_SPEED_TIME, 30l);
+-						curl_easy_setopt(cHandle.get(), CURLOPT_LOW_SPEED_LIMIT, 15l);
+-						curl_easy_setopt(cHandle.get(), CURLOPT_CONNECTTIMEOUT, 30l);
+-						auto reqret = curl_easy_perform(cHandle.get());
+-						if (CURLE_OK == reqret) {
+-							ProcessResponse();
+-						} else {
+-							SPRaise("HTTP request error (%s).", curl_easy_strerror(reqret));
+-						}
++					QuickFirstList();
++					auto reqret = Fetch(cl_serverListUrl.CString());
++					if (CURLE_OK == reqret) {
++						ProcessResponse();
+ 					} else {
+-						SPRaise("Failed to create cURL object.");
++						SPRaise("HTTP request error (%s).", curl_easy_strerror(reqret));
+ 					}
+ 				} catch (std::exception &ex) {
+ 					auto lst = stmp::make_unique<MainScreenServerList>();
+@@ -252,8 +274,10 @@ namespace spades {
+ 			auto newResult = resultCell.take();
+ 			if (newResult) {
+ 				result = std::move(newResult);
+-				query->MarkForAutoDeletion();
+-				query = NULL;
++				if (!result->partial) { // a partial list means the full one is still on its way
++					query->MarkForAutoDeletion();
++					query = NULL;
++				}
+ 				return true;
+ 			}
+ 
+diff --git a/Sources/Gui/MainScreenHelper.h b/Sources/Gui/MainScreenHelper.h
+index a346729..ee4f333 100644
+--- a/Sources/Gui/MainScreenHelper.h
++++ b/Sources/Gui/MainScreenHelper.h
+@@ -70,6 +70,8 @@ namespace spades {
+ 		struct MainScreenServerList {
+ 			std::vector<Handle<MainScreenServerItem>> list;
+ 			std::string message;
++			// The quick first answer (the list URL with ?first=1); the full list follows.
++			bool partial = false;
+ 
+ 			~MainScreenServerList();
+ 		};
