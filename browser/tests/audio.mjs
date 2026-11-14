@@ -15,7 +15,7 @@ globalThis.AudioContext = class {
 globalThis.fetch = path => new Promise(resolve => pending.push({path, resolve}));
 const sound = new GameAudio(); await sound.unlock();
 sound.listener({x: 10, y: 20, z: 30}, {x: 1, y: 0, z: 0}, {x: 0, y: 1, z: 0});
-assert.ok(sound.master.target.limiter && sound.master.target.target === sound.context.destination, 'Mix is limited before the output');
+assert.ok(sound.master.target.limiter && sound.master.target.target.target === sound.context.destination, 'Mix is limited before the output');
 assert.equal(sound.context.listener.positionX.value, 10);
 assert.equal(sound.context.listener.forwardX.value, 1);
 assert.equal(sound.context.listener.upY.value, 1);

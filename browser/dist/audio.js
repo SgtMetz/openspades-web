@@ -10,11 +10,13 @@ export class GameAudio {
     if (!this.context) {
       this.context = new AudioContext();
       this.master = this.context.createGain(); this.master.gain.value = this._volume;
-      // Limit the summed mix so overlapping gunfire does not hard-clip.
-      const limiter = this.context.createDynamicsCompressor();
-      limiter.threshold.value = -6; limiter.knee.value = 6; limiter.ratio.value = 20;
+      // Limit the summed mix so overlapping gunfire does not hard-clip. The trim undoes the
+      // compressor's automatic makeup gain, (1 / gain at 0 dBFS)^0.6, so quiet sounds stay put.
+      const limiter = this.context.createDynamicsCompressor(), trim = this.context.createGain();
+      limiter.threshold.value = -6; limiter.knee.value = 0; limiter.ratio.value = 20;
       limiter.attack.value = .002; limiter.release.value = .15;
-      this.master.connect(limiter).connect(this.context.destination);
+      trim.gain.value = Math.pow(10, .6 * (-6 + 6 / 20) / 20);
+      this.master.connect(limiter).connect(trim).connect(this.context.destination);
     }
     await this.context.resume();
   }

@@ -84,11 +84,11 @@ patch('Gui/SDLRunner.cpp', '#include <Audio/YsrDevice.h>', '')
 patch('Gui/SDLRunner.cpp', 'return new audio::ALDevice();', 'return new audio::BrowserAudio();')
 patch('Gui/SDLRunner.cpp', 'return new audio::YsrDevice();', 'return new audio::BrowserAudio();')
 patch('Gui/StartupScreenHelper.cpp', '#include <Audio/ALDevice.h>', '#include <BrowserAudio.h>')
-# Browsers keep Escape for leaving pointer lock and do not deliver it to the page, so P
-# also opens the in-game menu (Setup there opens the settings). Chat and other UI text input
-# are handled before this branch, so typing "p" is unaffected.
+# Browsers keep Escape for leaving pointer lock and do not deliver it to the page, so P also
+# opens the in-game menu (Setup there opens the settings). SDL names the key "P". Chat and other
+# UI text input are handled before this branch, so typing "p" is unaffected.
 patch('Client/Client_Input.cpp', 'if (name == "Escape") {',
-      'if (name == "Escape" || (name == "p" && !cg_debugCorpse)) {')
+      'if (name == "Escape" || (EqualsIgnoringCase(name, "p") && !cg_debugCorpse)) {')
 patch('Gui/StartupScreenHelper.cpp', '#include <Audio/YsrDevice.h>', '')
 patch('Gui/StartupScreenHelper.cpp', 'audio::ALDevice::', 'audio::BrowserAudio::')
 patch('Gui/StartupScreenHelper.cpp', 'audio::YsrDevice::TryLoadYsr()', 'false')
@@ -260,4 +260,35 @@ for pak, entries in MKPAK.items():
                 archive.write(file, relative)
 copy_tree(UPSTREAM / 'Resources/Scripts', resources / 'Scripts')
 copy_tree(UPSTREAM / 'Resources/Shaders', resources / 'Shaders')
+
+# Loose /Resources files override the paks. The in-game menu gets a master volume slider
+# (s_gain, applied to every new sound) and P closes it again like Escape.
+def patch_resource(path, before, after):
+    file = resources / path
+    text = file.read_text(encoding='utf-8-sig')
+    if before not in text:
+        raise RuntimeError(f'Upstream context changed: {path}: {before[:50]}')
+    file.write_text(text.replace(before, after), encoding='utf-8')
+menu = 'Scripts/Gui/Client/Menu.as'
+patch_resource(menu, 'float winW = 180.f, winH = 32.f * 4.f - 2.f;', 'float winW = 220.f, winH = 32.f * 5.f - 2.f;')
+patch_resource(menu, """                @button.Activated = spades::ui::EventHandler(this.OnDisconnect);
+                AddChild(button);
+            }
+""", """                @button.Activated = spades::ui::EventHandler(this.OnDisconnect);
+                AddChild(button);
+            }
+            {
+                spades::ui::Label label(Manager);
+                label.Text = _Tr("Preferences", "Volume");
+                label.Alignment = Vector2(0.f, 0.5f);
+                label.Bounds = AABB2(winX, winY + 128.f, 60.f, 30.f);
+                AddChild(label);
+                ConfigSlider slider(Manager, "s_gain", 0.f, 1.f, 0.01f,
+                                    ConfigNumberFormatter(0, "%", "", 100));
+                slider.label.Alignment = Vector2(0.f, 0.5f);
+                slider.Bounds = AABB2(winX + 60.f, winY + 134.f, winW - 60.f - 44.f, 18.f);
+                AddChild(slider);
+            }
+""")
+patch_resource(menu, 'if (IsEnabled and key == "Escape") {', 'if (IsEnabled and (key == "Escape" or key == "P")) {')
 print(f'Prepared original runtime; {converted} script bindings use generic wrappers.')

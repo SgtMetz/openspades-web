@@ -109,12 +109,13 @@ if (typeof window !== 'undefined') {
   const audio = () => {
     if (!context) {
       context = new AudioContext();
-      // Output limiter (desktop: OpenAL Soft's output limiter). Overlapping gunfire and
-      // explosions sum far past full scale; without this the browser hard-clips the mix.
-      output = context.createDynamicsCompressor();
-      output.threshold.value = -6; output.knee.value = 6; output.ratio.value = 20;
-      output.attack.value = .002; output.release.value = .15;
-      output.connect(context.destination);
+      // Output dynamics. Overlapping gunfire and explosions sum far past full scale: a leveller
+      // turns loud passages down automatically and a limiter (desktop: OpenAL Soft's output
+      // limiter) stops the rest from hard-clipping. Quiet sounds keep their level.
+      output = context.createGain();
+      const leveller = dynamics(-15, 6, 4, .005, .4), limiter = dynamics(-3, 0, 20, .001, .1);
+      output.connect(leveller.input); leveller.output.connect(limiter.input);
+      limiter.output.connect(context.destination);
       // Reverb send (desktop: EFX EAX reverb slot), wet gain driven by the reverb parameters.
       reverbBus = context.createConvolver(); reverbBus.normalize = false;
       reverbOut = context.createGain(); reverbOut.gain.value = 0;
@@ -122,6 +123,16 @@ if (typeof window !== 'undefined') {
     }
     return context;
   };
+  // A DynamicsCompressorNode also applies automatic makeup gain, (1 / gain at 0 dBFS)^0.6, which
+  // would raise every quiet sound. Undo it so the node only ever turns sound down.
+  function dynamics(threshold, knee, ratio, attack, release) {
+    const input = context.createDynamicsCompressor(), output = context.createGain();
+    input.threshold.value = threshold; input.knee.value = knee; input.ratio.value = ratio;
+    input.attack.value = attack; input.release.value = release;
+    output.gain.value = Math.pow(10, .6 * (threshold + (0 - threshold) / ratio) / 20);
+    input.connect(output);
+    return {input, output};
+  }
   const unlock = () => { audio().resume().catch(console.warn); };
   addEventListener('pointerdown', unlock, {capture: true});
   addEventListener('keydown', unlock, {capture: true});
@@ -215,6 +226,8 @@ if (typeof window !== 'undefined') {
   // shortcuts. Cancel the ones that would leave or disturb the game; keep text input
   // (keypress) and clipboard shortcuts working.
   canvas.addEventListener('contextmenu', e => e.preventDefault());
+  // The wheel belongs to the game (weapon switching, map zoom): never scroll or zoom the page.
+  addEventListener('wheel', e => { if (!e.target.closest?.('dialog[open], #native-start')) e.preventDefault(); }, {passive: false, capture: true});
   canvas.addEventListener('pointerdown', () => canvas.focus());
   const textField = document.getElementById('touch-text');
   addEventListener('keydown', e => {
