@@ -520,7 +520,13 @@ void osweb_present() {
 		__atomic_sub_fetch(&osweb_frames_in_flight, 1, __ATOMIC_SEQ_CST);
 		return;
 	}
-	for (int spins = 0; __atomic_load_n(&osweb_frames_in_flight, __ATOMIC_SEQ_CST) > maxFramesInFlight && spins < 200; ++spins) {
+	// The wait is capped by time, not by a count of sleeps: a sleep can last far longer than asked
+	// (200 x usleep(500) took ~3 s), and whenever the page stops showing frames (requestAnimationFrame
+	// paused or stalled) every frame waited that long. ENet is serviced once per frame, so the map
+	// download ("Loading snapshot") was acknowledged every ~3 s and crawled at ~1 KB/s.
+	const double deadline = emscripten_get_now() + 50.0;
+	while (__atomic_load_n(&osweb_frames_in_flight, __ATOMIC_SEQ_CST) > maxFramesInFlight &&
+	       emscripten_get_now() < deadline) {
 		emscripten_current_thread_process_queued_calls();
 		usleep(500);
 	}
