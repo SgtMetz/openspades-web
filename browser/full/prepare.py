@@ -84,6 +84,11 @@ patch('Gui/SDLRunner.cpp', '#include <Audio/YsrDevice.h>', '')
 patch('Gui/SDLRunner.cpp', 'return new audio::ALDevice();', 'return new audio::BrowserAudio();')
 patch('Gui/SDLRunner.cpp', 'return new audio::YsrDevice();', 'return new audio::BrowserAudio();')
 patch('Gui/StartupScreenHelper.cpp', '#include <Audio/ALDevice.h>', '#include <BrowserAudio.h>')
+# Browsers keep Escape for leaving pointer lock and do not deliver it to the page, so P
+# also opens the in-game menu (Setup there opens the settings). Chat and other UI text input
+# are handled before this branch, so typing "p" is unaffected.
+patch('Client/Client_Input.cpp', 'if (name == "Escape") {',
+      'if (name == "Escape" || (name == "p" && !cg_debugCorpse)) {')
 patch('Gui/StartupScreenHelper.cpp', '#include <Audio/YsrDevice.h>', '')
 patch('Gui/StartupScreenHelper.cpp', 'audio::ALDevice::', 'audio::BrowserAudio::')
 patch('Gui/StartupScreenHelper.cpp', 'audio::YsrDevice::TryLoadYsr()', 'false')

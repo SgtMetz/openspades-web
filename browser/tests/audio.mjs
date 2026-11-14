@@ -9,11 +9,13 @@ globalThis.AudioContext = class {
   createGain() { return node(); }
   createBufferSource() { const n = node(); n.start = () => { n.started = true; }; sources.push(n); return n; }
   createPanner() { const n = node(); n.panner = true; return n; }
+  createDynamicsCompressor() { const n = node(); n.limiter = true; for (const k of ['threshold', 'knee', 'ratio', 'attack', 'release']) n[k] = {value: 0}; return n; }
   async decodeAudioData(b) { return b; }
 };
 globalThis.fetch = path => new Promise(resolve => pending.push({path, resolve}));
 const sound = new GameAudio(); await sound.unlock();
 sound.listener({x: 10, y: 20, z: 30}, {x: 1, y: 0, z: 0}, {x: 0, y: 1, z: 0});
+assert.ok(sound.master.target.limiter && sound.master.target.target === sound.context.destination, 'Mix is limited before the output');
 assert.equal(sound.context.listener.positionX.value, 10);
 assert.equal(sound.context.listener.forwardX.value, 1);
 assert.equal(sound.context.listener.upY.value, 1);

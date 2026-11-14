@@ -104,15 +104,21 @@ if (typeof window !== 'undefined') {
   // BrowserAudio.cpp sends sound bytes read through the original FileManager (paks, .weak
   // fallbacks, user overrides) and plays them here like Audio/ALDevice.cpp does with OpenAL.
   const buffers = new Map();                     // chunk id -> Promise<AudioBuffer>
-  let context, voices = 0, reverbBus, reverbOut, reverbState;
+  let context, output, voices = 0, reverbBus, reverbOut, reverbState;
   let listener = {p: [0, 0, 0], f: [0, 1, 0], u: [0, 0, -1]};
   const audio = () => {
     if (!context) {
       context = new AudioContext();
+      // Output limiter (desktop: OpenAL Soft's output limiter). Overlapping gunfire and
+      // explosions sum far past full scale; without this the browser hard-clips the mix.
+      output = context.createDynamicsCompressor();
+      output.threshold.value = -6; output.knee.value = 6; output.ratio.value = 20;
+      output.attack.value = .002; output.release.value = .15;
+      output.connect(context.destination);
       // Reverb send (desktop: EFX EAX reverb slot), wet gain driven by the reverb parameters.
       reverbBus = context.createConvolver(); reverbBus.normalize = false;
       reverbOut = context.createGain(); reverbOut.gain.value = 0;
-      reverbBus.connect(reverbOut).connect(context.destination);
+      reverbBus.connect(reverbOut).connect(output);
     }
     return context;
   };
@@ -123,11 +129,20 @@ if (typeof window !== 'undefined') {
   function impulse(decay, reflGain, lateGain, reflDelay, lateDelay) {
     const rate = context.sampleRate, length = Math.ceil(Math.min(reflDelay + lateDelay + decay, 4) * rate);
     const ir = context.createBuffer(2, Math.max(length, 1), rate);
+    // EFX reflection/late gains are output levels, so each noise segment is scaled to that
+    // energy. Raw noise sums thousands of samples per output sample (tens of times louder).
+    const segment = (d, from, to, gain, envelope) => {
+      const n = new Float32Array(Math.max(to - from, 0));
+      let energy = 0;
+      for (let i = 0; i < n.length; i++) { n[i] = (Math.random() * 2 - 1) * envelope(i); energy += n[i] * n[i]; }
+      const scale = energy > 0 ? gain / Math.sqrt(energy) : 0;
+      for (let i = 0; i < n.length; i++) d[from + i] += n[i] * scale;
+    };
     for (let ch = 0; ch < 2; ch++) {
       const d = ir.getChannelData(ch);
-      const early = Math.floor(reflDelay * rate), late = Math.floor((reflDelay + lateDelay) * rate);
-      for (let i = early; i < Math.min(early + Math.floor(.02 * rate), length); i++) d[i] += (Math.random() * 2 - 1) * reflGain;
-      for (let i = late; i < length; i++) d[i] += (Math.random() * 2 - 1) * lateGain * Math.exp(-6.91 * (i - late) / (decay * rate));
+      const early = Math.min(Math.floor(reflDelay * rate), length), late = Math.min(Math.floor((reflDelay + lateDelay) * rate), length);
+      segment(d, early, Math.min(early + Math.floor(.02 * rate), length), reflGain, () => 1);
+      segment(d, late, length, lateGain, i => Math.exp(-6.91 * i / (decay * rate)));
     }
     return ir;
   }
@@ -186,9 +201,9 @@ if (typeof window !== 'undefined') {
           const panner = context.createPanner(); panner.panningModel = 'HRTF'; panner.distanceModel = 'inverse';
           panner.refDistance = Math.max(.01, reference); panner.rolloffFactor = mode === 1 ? 0 : 1; panner.maxDistance = 1e4;
           if (panner.positionX) setVector(panner, 'position', p); else panner.setPosition(...p);
-          nodes.push(panner); gain.connect(panner).connect(context.destination);
+          nodes.push(panner); gain.connect(panner).connect(output);
           if (reverb) panner.connect(reverbBus);
-        } else gain.connect(context.destination);
+        } else gain.connect(output);
         source.onended = release; source.start(); started = true;
       } catch (error) { console.warn('OpenSpades audio:', error?.message ?? error); }
       finally { if (!started) release(); }

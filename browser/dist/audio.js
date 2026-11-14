@@ -10,7 +10,11 @@ export class GameAudio {
     if (!this.context) {
       this.context = new AudioContext();
       this.master = this.context.createGain(); this.master.gain.value = this._volume;
-      this.master.connect(this.context.destination);
+      // Limit the summed mix so overlapping gunfire does not hard-clip.
+      const limiter = this.context.createDynamicsCompressor();
+      limiter.threshold.value = -6; limiter.knee.value = 6; limiter.ratio.value = 20;
+      limiter.attack.value = .002; limiter.release.value = .15;
+      this.master.connect(limiter).connect(this.context.destination);
     }
     await this.context.resume();
   }
