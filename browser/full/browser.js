@@ -9,7 +9,7 @@ if (typeof window !== 'undefined') {
   Module['setStatus'] = text => { status.textContent = text; status.hidden = !text; };
   Module['printErr'] = text => { console.error(text); };
   Module['onAbort'] = reason => { status.hidden = false; status.textContent = 'OpenSpades stopped: ' + reason; };
-  Module['onExit'] = code => { status.hidden = false; status.textContent = code ? 'OpenSpades exited with an error. See SystemMessages.log in Saved files.' : 'OpenSpades has quit. Reload the page to start again.'; };
+  Module['onExit'] = code => { status.hidden = false; status.textContent = code ? 'OpenSpades exited with an error. Reload the page to start again.' : 'OpenSpades has quit. Reload the page to start again.'; };
 
   // Desktop command-line arguments: an aos:// address and protocol version, from the URL,
   // e.g. ?aos://1234567890:32887&v=76 or #aos://1234567890:32887
@@ -358,21 +358,40 @@ if (typeof window !== 'undefined') {
   // ---- ENet datagrams over the WebSocket relay (enet_full.c) ---------------------------
   // Owned by the main thread: the client pthread never returns to its event loop, so its own
   // WebSockets would never deliver events. One relay connection per ENet socket id.
+  // Received datagrams go straight into the socket's ring in shared wasm memory, which ENet on
+  // the client pthread reads without waiting for this thread (layout in enet_full.c).
   const nets = Module['osFullNet'] = {};
+  const rings = {};
+  Module['osNetOpen'] = (id, ptr, slots, mtu) => { rings[id] = {ptr, slots, mtu, stride: 4 + mtu}; };
+  const heap = () => {
+    if (HEAPU8.buffer !== wasmMemory.buffer) updateMemoryViews(); // after memory growth
+    return [HEAPU8, HEAPU32];
+  };
+  function deliver(id, data) {
+    const ring = rings[id];
+    if (!ring) return;
+    const [u8, u32] = heap(), h = ring.ptr >> 2;
+    const head = Atomics.load(u32, h), tail = Atomics.load(u32, h + 1);
+    if (data.length > ring.mtu || ((head - tail) >>> 0) >= ring.slots) { u32[h + 2]++; return; } // full: dropped, like UDP
+    const slot = ring.ptr + 12 + (head % ring.slots) * ring.stride;
+    u32[slot >> 2] = data.length;
+    u8.set(data, slot + 4);
+    Atomics.store(u32, h, (head + 1) >>> 0);
+  }
   Module['osNetSend'] = (id, host, port, bytes) => {
     const key = host + ':' + port;
     let net = nets[id];
     if (!net || net.key !== key) {
-      Module['osNetClose'](id);
-      net = nets[id] = {key, queue: [], pending: [], closed: false};
+      closeNet(id);
+      net = nets[id] = {key, pending: [], closed: false};
       const origin = location.origin.replace(/^http/, 'ws');
       const ws = net.ws = new WebSocket((Module['relayUrl'] || self.osRelayUrl || origin) + '/relay?host=' + encodeURIComponent(host) + '&port=' + port);
       ws.binaryType = 'arraybuffer';
       ws.onopen = () => { for (const d of net.pending.splice(0)) ws.send(d); };
-      ws.onmessage = e => { if (!net.closed && net.queue.length < 1024) net.queue.push(new Uint8Array(e.data)); };
+      ws.onmessage = e => { if (!net.closed && nets[id] === net) deliver(id, new Uint8Array(e.data)); };
       const fail = why => {
         if (net.closed) return;
-        net.closed = true; net.queue.length = net.pending.length = 0;
+        net.closed = true; net.pending.length = 0;
         console.warn('[net] relay to ' + key + ' ' + why);
       };
       ws.onerror = () => fail('failed');
@@ -384,23 +403,14 @@ if (typeof window !== 'undefined') {
     if (net.ws.readyState === 1) net.ws.send(bytes);
     else if (net.pending.length < 256) net.pending.push(bytes);
   };
-  Module['osNetReceive'] = (id, ptr, capacity) => {
-    const net = nets[id];
-    while (net && net.queue.length) {
-      const packet = net.queue.shift();
-      if (packet.length > capacity) continue; // ENet discards oversized datagrams either way
-      HEAPU8.set(packet, ptr);
-      return packet.length;
-    }
-    return 0;
-  };
-  Module['osNetClose'] = id => {
+  function closeNet(id) {
     const net = nets[id];
     if (!net) return;
     delete nets[id];
     net.closed = true;
     try { net.ws.close(); } catch (e) {}
-  };
+  }
+  Module['osNetClose'] = id => { closeNet(id); delete rings[id]; };
 
   // ---- Graphics quality (replaces the desktop startup window) --------------------------
   // The game starts at the main menu. Before it starts, a short GPU test picks one of the original
@@ -471,7 +481,8 @@ void main(){ vec2 uv=gl_FragCoord.xy*0.003+seed; vec3 v=vec3(uv,seed);
   }
   function videoSize(tier) {
     const [ratioCap, pixelCap] = resolution[tier];
-    let w = innerWidth, h = innerHeight;
+    // A page loaded in a hidden or zero-size frame reports 0x0; use the desktop default then.
+    let w = innerWidth || 1024, h = innerHeight || 640;
     if (touch.enabled && h > w) [w, h] = [h, w]; // phones play sideways
     const ratio = Math.min(devicePixelRatio || 1, ratioCap);
     w *= ratio; h *= ratio;
@@ -520,7 +531,7 @@ void main(){ vec2 uv=gl_FragCoord.xy*0.003+seed; vec3 v=vec3(uv,seed);
       const describe = {auto: 'Uses the tier the device test picked.', low: 'Fastest. No effects, smaller shadows and resolution.',
         medium: 'Basic effects and water.', high: 'Most effects, sharper resolution.', ultra: 'Every effect, full resolution. Needs a fast GPU.'};
       panel.innerHTML = '<h2>Graphics quality</h2><div class="native-start-options"></div>' +
-        '<p class="native-start-note">You can change this later from the Graphics menu in the top right.</p><button type="button">Start</button>';
+        '<p class="native-start-note">To change this later, reload the page.</p><button type="button">Start</button>';
       const list = panel.querySelector('.native-start-options');
       for (const t of ['auto', ...tiers]) {
         const label = document.createElement('label');
@@ -590,6 +601,7 @@ void main(){ vec2 uv=gl_FragCoord.xy*0.003+seed; vec3 v=vec3(uv,seed);
       console.log(`[quality] ${source}: ${tier} (recommended ${saved.recommended}` +
         (saved.score !== undefined ? `, score ${Number(saved.score).toFixed(1)}, ${saved.renderer || 'unknown GPU'}` : '') +
         `)${apply ? ', preset applied' : ''}, ${settings.r_videoWidth}x${settings.r_videoHeight}`);
+      document.querySelector('nav')?.remove(); // top toolbar (Graphics, Saved files, Import, Fullscreen) hidden once quality is chosen
       removeRunDependency('quality');
     }, 30);
   });
@@ -631,20 +643,7 @@ void main(){ vec2 uv=gl_FragCoord.xy*0.003+seed; vec3 v=vec3(uv,seed);
     if (!list.children.length) list.textContent = 'No files yet.';
     panel.showModal();
   };
-  // Desktop users copy maps, paks and configs into the user directory; this is the equivalent.
-  const importer = document.getElementById('native-import');
-  importer.onchange = async () => {
-    for (const file of importer.files) {
-      const dir = /\.vxl$/i.test(file.name) ? '/user/Maps' : '/user';
-      FS.mkdirTree(dir); FS.writeFile(dir + '/' + file.name, new Uint8Array(await file.arrayBuffer()));
-    }
-    importer.value = ''; Module['osSaveUserFiles']?.();
-    dialog('Imported', Object.assign(document.createElement('p'), {textContent: 'Files were copied to the OpenSpades user directory. Paks and configuration take effect after a reload, as on desktop after a restart.'}));
-  };
-  document.getElementById('native-files-import').onclick = () => importer.click();
-  document.getElementById('native-files-open').onclick = () => Module['showUserFiles']();
   document.getElementById('native-files-close').onclick = () => document.getElementById('native-files').close();
-  document.getElementById('native-fullscreen').onclick = () => document.documentElement.requestFullscreen().then(layout);
   // r_fullscreen / Alt+Enter (BrowserPlatform.cpp). Entering needs a recent user gesture: Alt+Enter
   // provides one; a startup request with r_fullscreen=1 waits for the first click or key.
   let wantFullscreen = false;

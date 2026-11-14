@@ -30,7 +30,10 @@
 #undef enet_socket_send
 #undef enet_socket_receive
 #include <stdio.h>
+#include <stdlib.h>
+#include <stdatomic.h>
 #include <emscripten/em_asm.h>
+#include <emscripten/threading.h>
 
 // Host names cannot be resolved in the browser. Like getaddrinfo, a name maps to an address,
 // here a placeholder in 240.0.0.0/8 (reserved, never a real server) that the transport turns
@@ -102,46 +105,85 @@ int enet_address_get_host(const ENetAddress *address, char *name, size_t nameLen
 static ENetAddress os_socket_remote[OS_SOCKETS + 1];
 static int os_socket_used[OS_SOCKETS + 1];
 
+// Received datagrams: a single-producer/single-consumer ring in shared wasm memory per socket.
+// The main thread (browser.js, WebSocket onmessage) writes slots and advances `head`; ENet on the
+// client pthread reads them here without any call to the main thread. A synchronous proxied call
+// per datagram (the previous design) took ~10 ms each, which limited a map download to a few
+// KB/s and left "Loading snapshot" stuck. Layout (read by browser.js): u32 head, u32 tail,
+// u32 dropped, then OS_RX_SLOTS x {u32 length, u8 data[ENET_PROTOCOL_MAXIMUM_MTU]}.
+#define OS_RX_SLOTS 512
+typedef struct {
+  _Atomic enet_uint32 head, tail;
+  enet_uint32 dropped;
+  struct { enet_uint32 length; unsigned char data[ENET_PROTOCOL_MAXIMUM_MTU]; } slots[OS_RX_SLOTS];
+} OsRxRing;
+static OsRxRing *os_rx[OS_SOCKETS + 1];
+
 ENetSocket enet_socket_create(ENetSocketType type) {
   (void)type;
-  for (int i = 1; i <= OS_SOCKETS; ++i)
-    if (!os_socket_used[i]) { os_socket_used[i] = 1; return i; }
+  for (int i = 1; i <= OS_SOCKETS; ++i) {
+    if (os_socket_used[i]) continue;
+    OsRxRing *ring = calloc(1, sizeof(OsRxRing));
+    if (!ring) return ENET_SOCKET_NULL;
+    os_socket_used[i] = 1; os_rx[i] = ring;
+    MAIN_THREAD_EM_ASM({ if (Module['osNetOpen']) Module['osNetOpen']($0, $1, $2, $3); },
+                       i, ring, OS_RX_SLOTS, ENET_PROTOCOL_MAXIMUM_MTU);
+    return i;
+  }
   return ENET_SOCKET_NULL;
 }
 
-// The relay sockets themselves are in browser.js (Module.osNetSend/osNetReceive/osNetClose),
-// called synchronously on the main thread.
+// The relay sockets themselves are in browser.js (Module.osNetOpen/osNetSend/osNetClose) on the
+// main thread. Closing is synchronous so the ring is no longer written once it is freed.
 void enet_socket_destroy(ENetSocket socket) {
-  if (socket < 1 || socket > OS_SOCKETS) return;
+  if (socket < 1 || socket > OS_SOCKETS || !os_socket_used[socket]) return;
   os_socket_used[socket] = 0;
   MAIN_THREAD_EM_ASM({ if (Module['osNetClose']) Module['osNetClose']($0); }, socket);
+  free(os_rx[socket]); os_rx[socket] = NULL;
 }
 
 int enet_socket_send(ENetSocket socket, const ENetAddress *address, const ENetBuffer *buffers, size_t count) {
-  unsigned char packet[ENET_PROTOCOL_MAXIMUM_MTU];
   size_t length = 0;
   if (!address || socket < 1 || socket > OS_SOCKETS) return -1;
-  for (size_t i = 0; i < count; ++i) {
-    if (length + buffers[i].dataLength > sizeof(packet)) return -1;
-    memcpy(packet + length, buffers[i].data, buffers[i].dataLength);
-    length += buffers[i].dataLength;
-  }
+  for (size_t i = 0; i < count; ++i) length += buffers[i].dataLength;
+  if (length > ENET_PROTOCOL_MAXIMUM_MTU) return -1;
   os_socket_remote[socket] = *address;
   char host[256];
   if (enet_address_get_host(address, host, sizeof(host)) != 0) return -1;
+  // Fire-and-forget to the main thread (like sendto on UDP); browser.js frees the copy. Proxied
+  // calls run in order, so datagrams keep their order and a later close comes after them.
+  size_t hostLength = strlen(host) + 1;
+  unsigned char *copy = malloc(hostLength + length);
+  if (!copy) return -1;
+  memcpy(copy, host, hostLength);
+  size_t offset = hostLength;
+  for (size_t i = 0; i < count; ++i) {
+    memcpy(copy + offset, buffers[i].data, buffers[i].dataLength);
+    offset += buffers[i].dataLength;
+  }
   // A datagram is accepted even if the relay is still connecting or has failed (see browser.js);
   // ENet's retransmission and timeouts then behave as with UDP to an unreachable server.
-  MAIN_THREAD_EM_ASM({
-    if (Module['osNetSend']) Module['osNetSend']($0, UTF8ToString($1), $2, HEAPU8.slice($3, $3 + $4));
-  }, socket, host, address->port, packet, (int)length);
+  MAIN_THREAD_ASYNC_EM_ASM({
+    try {
+      if (Module['osNetSend'])
+        Module['osNetSend']($0, UTF8ToString($1), $2, HEAPU8.slice($1 + $3, $1 + $3 + $4));
+    } finally { _free($1); }
+  }, socket, copy, address->port, (int)hostLength, (int)length);
   return (int)length;
 }
 
 int enet_socket_receive(ENetSocket socket, ENetAddress *address, ENetBuffer *buffers, size_t count) {
-  if (count != 1 || socket < 1 || socket > OS_SOCKETS) return -1;
-  int length = MAIN_THREAD_EM_ASM_INT({
-    return Module['osNetReceive'] ? Module['osNetReceive']($0, $1, $2) : 0;
-  }, socket, buffers[0].data, (int)buffers[0].dataLength);
-  if (length > 0 && address) *address = os_socket_remote[socket];
-  return length;
+  if (count != 1 || socket < 1 || socket > OS_SOCKETS || !os_rx[socket]) return -1;
+  OsRxRing *ring = os_rx[socket];
+  for (;;) {
+    enet_uint32 tail = atomic_load_explicit(&ring->tail, memory_order_relaxed);
+    if (tail == atomic_load_explicit(&ring->head, memory_order_acquire)) return 0;
+    const enet_uint32 slot = tail % OS_RX_SLOTS, length = ring->slots[slot].length;
+    const int fits = length <= buffers[0].dataLength;
+    if (fits) memcpy(buffers[0].data, ring->slots[slot].data, length);
+    atomic_store_explicit(&ring->tail, tail + 1, memory_order_release);
+    if (!fits) continue; // ENet discards oversized datagrams either way
+    if (address) *address = os_socket_remote[socket];
+    return (int)length;
+  }
 }

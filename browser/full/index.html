@@ -37,7 +37,7 @@ html.touch-playing nav{display:none}
 <canvas id="canvas" width="1024" height="640" tabindex="0" aria-label="OpenSpades original client"></canvas>
 <canvas id="native-view" width="1024" height="640" aria-hidden="true"></canvas>
 <p id="native-status">Loading original OpenSpades client…</p>
-<nav><label>Graphics <select id="native-quality" aria-label="Graphics quality"><option>Auto</option></select></label> <button id="native-files-open">Saved files</button> <button id="native-files-import">Import file</button> <button id="native-fullscreen">Fullscreen</button></nav>
+<nav><label>Graphics <select id="native-quality" aria-label="Graphics quality"><option>Auto</option></select></label></nav>
 <div id="touch-controls" hidden aria-label="Touch game controls">
  <div class="touch-top"><button data-tap="Escape">Menu</button><button data-tap="T">Chat</button><button data-key="Tab">Scores</button><button data-tap="M">Map</button><button data-tap="R">Reload</button><button data-tap="E">Pick color</button><button data-tap="Left">◀</button><button data-tap="Right">▶</button></div>
  <div id="touch-stick" aria-label="Movement joystick"><span id="touch-knob"></span></div>
@@ -48,5 +48,5 @@ html.touch-playing nav{display:none}
 <input id="touch-text" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="Text input">
 <p id="touch-rotate">Turn your device sideways for more room.</p>
 <dialog id="native-files"><h2>Saved files</h2><p>Maps, screenshots, demos, logs and configuration saved by OpenSpades (the desktop user directory).</p><div id="native-file-list"></div><button id="native-files-close">Close</button></dialog>
-<input id="native-import" type="file" multiple hidden>
+
 <script src="debug-log.js"></script><script>var Module=window.Module||{};if(!crossOriginIsolated){document.getElementById('native-status').textContent='This build needs a server with cross-origin isolation enabled.';}</script><script src="full-client.js"></script></body></html>
