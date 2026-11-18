@@ -12,7 +12,7 @@ Phone screenshots (1920×1080, landscape): `screenshots/` — home screen, serve
 | Package name | `app.openspadesweb.mobile` (permanent once uploaded) |
 | Category | Game → Action |
 | Tags | Shooter, Sandbox, Multiplayer, Building |
-| Contact email | *(your support address — required)* |
+| Contact email | jupitergallus@gmail.com |
 | Website | https://openspadesweb.app/ |
 | Privacy policy URL | https://openspadesweb.app/privacy/ (served by the hosting repo from `os-site/page/privacy/`, made from `store/privacy-policy.md`) |
 

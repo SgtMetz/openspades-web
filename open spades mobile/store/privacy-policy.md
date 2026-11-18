@@ -30,4 +30,4 @@ The app is not directed at children under 13. Online servers include unmoderated
 
 ## Changes and contact
 
-Changes to this policy will be published at this address. Questions: *(your contact email)*.
+Changes to this policy will be published at this address. Questions: jupitergallus@gmail.com.

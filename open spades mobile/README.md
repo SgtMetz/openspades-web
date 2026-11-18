@@ -95,7 +95,7 @@ If `keystore.properties` is missing, the release build is produced unsigned.
 3. Fill in the store listing from `store/listing.md`.
    - Use `store/icon-512.png` and `store/feature-graphic-1024x500.png`.
    - Capture at least two landscape phone screenshots. In the app, use Pause → Screenshot, or run `adb exec-out screencap -p > shot.png`.
-4. Host `store/privacy-policy.md` publicly, add a contact email, and paste its URL into Play Console.
+4. Host `store/privacy-policy.md` publicly, and paste its URL into Play Console.
 5. Answer **Ads: No**, and complete these sections using the answers in `store/listing.md`:
    - Content rating.
    - Target audience (13+).
