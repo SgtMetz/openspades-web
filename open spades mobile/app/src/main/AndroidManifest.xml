@@ -25,12 +25,6 @@
         android:theme="@style/Theme.OpenSpades"
         android:usesCleartextTraffic="false">
 
-        <!-- AdMob app ID (app/build.gradle.kts: ads.properties for release, Google's test ID for debug). -->
-        <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="${admobAppId}" />
-        <!-- Initialize the ads SDK on a background thread instead of during app start. -->
-        <meta-data android:name="com.google.android.gms.ads.flag.OPTIMIZE_INITIALIZATION" android:value="true" />
-        <meta-data android:name="com.google.android.gms.ads.flag.OPTIMIZE_AD_LOADING" android:value="true" />
-
         <activity
             android:name=".MainActivity"
             android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboard|keyboardHidden|navigation|uiMode|density|fontScale"

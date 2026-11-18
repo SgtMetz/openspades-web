@@ -74,19 +74,6 @@ The debug build installs next to the release build as `app.openspadesweb.mobile.
 
 Debug builds allow `chrome://inspect` WebView debugging from desktop Chrome.
 
-## Ads
-
-The app shows a Google AdMob interstitial after the local player dies (`AdManager.java`; the page calls `Native.playerDied()` from `updateVisuals` in `web/main.js`). Rules: never in the first 3 minutes after launch, then at most one every 4 minutes, never while a menu is open. While the ad is up the page does not open the pause menu. Change `FIRST_AD_DELAY_MS` / `COOLDOWN_MS` to tune it.
-
-Consent: Google's User Messaging Platform runs at launch and shows Google's consent form where required (EEA, UK, Switzerland, US states with privacy laws); ads load only once `canRequestAds()` is true. Settings → Game shows **Privacy & ad choices** wherever the form must stay reachable.
-
-Before the first store release:
-
-1. In [AdMob](https://apps.admob.com), add the app (Android, not yet listed; link it to the Play listing later), create an **Interstitial** ad unit, and copy both IDs into `ads.properties`. `bundleRelease` refuses to build with the test IDs; `-PallowTestAds` overrides that for a test upload.
-2. In AdMob → **Privacy & messaging**, create and publish a **GDPR** message (and a **US state regulations** message) for this app, with the privacy policy URL `https://openspadesweb.app/privacy/`. Without a published message the consent form never appears and ads in Europe are limited.
-3. Put `app-ads.txt` on the developer website (the hosting repo's `os-site/page/app-ads.txt`, with the line AdMob shows under Apps → app-ads.txt) and set the same website in the Play listing.
-4. Debug builds always use Google's test ad unit, so testers see "Test Ad" banners and you can never click your own live ads. Do not tap live ads in the release build either: AdMob bans accounts for it. Add your phone as a test device in AdMob → Settings → Test devices.
-
 ## Signing
 
 `keystore/upload.jks` is the **upload key**. The build reads it through `keystore.properties`, which holds the store path, alias and passwords. Both files are gitignored.
@@ -109,7 +96,7 @@ If `keystore.properties` is missing, the release build is produced unsigned.
    - Use `store/icon-512.png` and `store/feature-graphic-1024x500.png`.
    - Capture at least two landscape phone screenshots. In the app, use Pause → Screenshot, or run `adb exec-out screencap -p > shot.png`.
 4. Host `store/privacy-policy.md` publicly, add a contact email, and paste its URL into Play Console.
-5. Answer **Ads: Yes**, and complete these sections using the answers in `store/listing.md`:
+5. Answer **Ads: No**, and complete these sections using the answers in `store/listing.md`:
    - Content rating.
    - Target audience (13+).
    - Data safety.

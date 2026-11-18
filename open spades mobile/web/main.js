@@ -832,7 +832,7 @@ function updateCamera(dt) {
 function updateVisuals(dt) {
   state = readState(); roster = readPlayers(); tool = state[11];
   if (state[6] < lastHealth && state[17]) { hurtFlash = 1; Native.haptic(lastHealth - state[6] >= 40 ? 'heavy' : 'hurt'); }
-  if (previousAlive && state[28] && !state[17] && state[30] < 2) { Native.haptic('heavy'); if (!overlay && !limboOpen) Native.playerDied(); }
+  if (previousAlive && state[28] && !state[17] && state[30] < 2) Native.haptic('heavy');
   lastHealth = state[6];
   if (state[28] && state[17] && !previousAlive && mode === 'offline') { yaw = 0; pitch = 0; }
   previousAlive = !!(state[28] && state[17]);
@@ -1039,13 +1039,10 @@ function handleBack() {
   if (limboOpen) { if (mode === 'offline' || (state[28] && net.joined)) { closeLimbo(); lock(); } else openGameMenu(); return true; }
   openGameMenu(); return true;
 }
-// Settings → Game → "Privacy & ad choices" appears only where Google's consent rules require it.
-Native.onNative('privacy', m => { $('privacy-row').hidden = !m.required; });
-$('privacy-options').onclick = () => Native.showPrivacyOptions();
 Native.onNative('back', () => { if (!handleBack()) Native.exitApp(); });
 Native.onNative('lifecycle', m => {
   if (m.state === 'pause') {
-    if (playing && mode !== 'title' && !overlay && !limboOpen && !m.ad) openGameMenu();
+    if (playing && mode !== 'title' && !overlay && !limboOpen) openGameMenu();
     if (chatOpen) closeChat();
     touch.reset(); audio.context?.suspend?.().catch(() => {});
   } else audio.context?.resume?.().catch(() => {});

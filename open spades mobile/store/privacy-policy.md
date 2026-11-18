@@ -7,21 +7,8 @@ OpenSpades Mobile ("the app") is a free, open-source game. This policy explains 
 ## What the app does not do
 
 - No accounts, sign-in or registration.
-- No analytics or crash-reporting services of the developer's own.
+- No advertising, analytics, tracking or crash-reporting services.
 - The developer does not receive, collect or store any personal information from the app.
-
-## Advertising
-
-The app is free and shows an occasional full-screen ad after your player dies. Ads are provided by **Google AdMob** (Google LLC). To choose, show and measure ads and to prevent fraud, the Google Mobile Ads SDK in the app collects and sends to Google:
-
-- your device's advertising ID and app set ID,
-- your IP address, from which an approximate location is derived,
-- information about the device and app, and your interactions with ads,
-- diagnostic data such as crash logs and performance information.
-
-How Google uses this information: https://policies.google.com/technologies/partner-sites. Google's privacy policy: https://policies.google.com/privacy.
-
-**Your choices.** Where the law requires consent (for example in the European Economic Area, the United Kingdom and Switzerland), the app asks for it with Google's consent form before ads are personalised, and you can change your choice at any time in **Settings → Game → Privacy & ad choices**. On any Android device you can reset or delete your advertising ID, or opt out of ad personalisation, in your device's settings (Settings → Privacy → Ads, or Settings → Google → Ads). The developer never receives this data.
 
 ## Information stored on your device
 

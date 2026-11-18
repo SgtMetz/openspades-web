@@ -83,10 +83,6 @@ export function setKeepAwake(on) { post({op: 'keepAwake', on: !!on}); }
 export function setGameActive(on) { post({op: 'gameActive', on: !!on}); }
 export function exitApp() { post({op: 'exit'}); }
 export function onNative(op, fn) { handlers[op] = fn; }
-/** The local player just died: the app may show a full-screen ad (it applies its own cooldown). */
-export function playerDied() { post({op: 'died'}); }
-/** Opens Google's consent form again (Settings → Privacy & ad choices). */
-export function showPrivacyOptions() { post({op: 'privacyOptions'}); }
 
 // Safe-area insets pushed by the shell (in CSS pixels).
 onNative('insets', m => {

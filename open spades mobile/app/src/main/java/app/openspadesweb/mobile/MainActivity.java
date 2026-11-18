@@ -63,8 +63,6 @@ public class MainActivity extends ComponentActivity {
     private Insets lastInsets = Insets.NONE;
     private byte[] pendingSave;
     private ActivityResultLauncher<Intent> saveLauncher;
-    private AdManager ads;
-    private boolean privacyOptionsRequired;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -152,17 +150,6 @@ public class MainActivity extends ComponentActivity {
             }
         });
 
-        ads = new AdManager(this, new AdManager.Listener() {
-            @Override public void onAdShowing(boolean showing) {
-                postToJs("{\"op\":\"ad\",\"showing\":" + showing + "}");
-            }
-            @Override public void onPrivacyOptionsRequired(boolean required) {
-                privacyOptionsRequired = required;
-                sendPrivacy();
-            }
-        });
-        ads.start();
-
         if (savedInstanceState != null) webView.restoreState(savedInstanceState);
         if (webView.getUrl() == null) webView.loadUrl(START_URL);
     }
@@ -177,9 +164,7 @@ public class MainActivity extends ComponentActivity {
         JSONObject m;
         try { m = new JSONObject(data); } catch (JSONException e) { return; }
         switch (m.optString("op")) {
-            case "ready": sendInsets(); sendPrivacy(); break;
-            case "died": if (ads != null) ads.onPlayerDied(); break;
-            case "privacyOptions": if (ads != null) ads.showPrivacyOptions(); break;
+            case "ready": sendInsets(); break;
             case "udp": udp.handle(m); break;
             case "haptic": haptic(m.optString("kind")); break;
             case "gameActive": setKeepScreenOn(m.optBoolean("on")); break;
@@ -199,10 +184,6 @@ public class MainActivity extends ComponentActivity {
                     .put("top", lastInsets.top / d).put("right", lastInsets.right / d)
                     .put("bottom", lastInsets.bottom / d).put("left", lastInsets.left / d).toString());
         } catch (JSONException ignored) { }
-    }
-
-    private void sendPrivacy() {
-        postToJs("{\"op\":\"privacy\",\"required\":" + privacyOptionsRequired + "}");
     }
 
     private void haptic(String kind) {
@@ -254,8 +235,7 @@ public class MainActivity extends ComponentActivity {
     }
 
     @Override protected void onPause() {
-        // While an ad covers the game the page must not open the pause menu: the player returns straight to play.
-        postToJs("{\"op\":\"lifecycle\",\"state\":\"pause\",\"ad\":" + (ads != null && ads.isShowing()) + "}");
+        postToJs("{\"op\":\"lifecycle\",\"state\":\"pause\"}");
         if (webView != null) webView.onPause();
         super.onPause();
     }
