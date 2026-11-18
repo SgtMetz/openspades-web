@@ -21,7 +21,7 @@ android {
         applicationId = "app.openspadesweb.mobile"
         minSdk = 26          // Android 8.0: adaptive icons; WebView with WebGL 2 + WebAssembly
         targetSdk = 36       // Google Play requirement for new apps and updates in 2026
-        versionCode = 2
+        versionCode = 3
         versionName = "1.0.0"
     }
 

@@ -11,6 +11,8 @@
     <!-- Keyboard/mouse devices (Chromebooks) can still play with touch controls switched off. -->
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
     <uses-feature android:name="android.hardware.touchscreen.multitouch" android:required="false" />
+    <!-- sensorLandscape implies a landscape requirement; keep fixed-portrait devices (some tablets, desktops, XR) eligible. -->
+    <uses-feature android:name="android.hardware.screen.landscape" android:required="false" />
 
     <application
         android:allowBackup="true"
