@@ -1,0 +1,19 @@
+# Gradle / Android build output
+.gradle/
+build/
+app/build/
+local.properties
+*.apk
+*.aab
+.idea/
+*.iml
+.cxx/
+
+# Signing secrets — never commit these. Back them up somewhere safe.
+keystore/
+keystore.properties
+
+# Game media and engine copied from ../browser/dist by scripts/sync-web.mjs
+web/assets/
+web/engine/
+web/vendor/

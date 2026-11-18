@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">OpenSpades</string>
+    <string name="saved">Saved</string>
+    <string name="save_failed">Could not save the file</string>
+    <string name="webview_too_old">OpenSpades needs a newer Android System WebView.\n\nUpdate \"Android System WebView\" (or Chrome) from the Play Store, then reopen the game.</string>
+</resources>

@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0b120d"><meta name="color-scheme" content="dark">
+<title>OpenSpades Mobile</title><link rel="icon" href="assets/Gfx/Title/LogoSmall.png"><link rel="stylesheet" href="mobile.css">
+</head>
+<body class="in-menu">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+ <symbol id="i-play" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 2c1 0 2.7 2 3.4 6H8.6C9.3 6 11 4 12 4Zm-2.6.5C8.7 5.900 8.2 7.900 8 10H4.3a8 8 0 0 1 5.100-5.500Zm5.200 0A8 8 0 0 1 19.700 10H16c-.2-2.100-.7-4.100-1.400-5.500ZM4.300 14H8c.2 2.100.7 4.100 1.400 5.500A8 8 0 0 1 4.300 14Zm4.300 0h6.800c-.7 4-2.400 6-3.400 6s-2.700-2-3.400-6Zm7.400 0h3.700a8 8 0 0 1-5.100 5.500c.7-1.400 1.200-3.400 1.400-5.500Z" fill="currentColor"/></symbol>
+ <symbol id="i-target" viewBox="0 0 24 24"><path d="M11 2v2.060A8 8 0 0 0 4.060 11H2v2h2.060A8 8 0 0 0 11 19.940V22h2v-2.060A8 8 0 0 0 19.940 13H22v-2h-2.060A8 8 0 0 0 13 4.060V2h-2Zm1 4a6 6 0 1 1 0 12 6 6 0 0 1 0-12Zm0 3a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z" fill="currentColor"/></symbol>
+ <symbol id="i-link" viewBox="0 0 24 24"><path d="M10.6 13.4a4 4 0 0 0 5.700 0l3-3a4 4 0 0 0-5.700-5.700l-1 1 1.400 1.400 1-1a2 2 0 0 1 2.900 2.900l-3 3a2 2 0 0 1-2.900 0l-1.400 1.400Zm2.800-2.800a4 4 0 0 0-5.700 0l-3 3a4 4 0 0 0 5.700 5.700l1-1-1.400-1.400-1 1a2 2 0 0 1-2.900-2.900l3-3a2 2 0 0 1 2.900 0l1.400-1.400Z" fill="currentColor"/></symbol>
+ <symbol id="i-gear" viewBox="0 0 24 24"><path d="M10.300 2h3.400l.5 2.600 1.600.9 2.500-.9 1.700 2.900-2 1.800v1.800l2 1.800-1.700 2.900-2.500-.9-1.600.9-.5 2.600h-3.400l-.5-2.600-1.600-.9-2.500.9L3.100 15.200l2-1.800v-1.800l-2-1.800 1.700-2.900 2.500.9 1.600-.9.4-2.700ZM12 8.500a3.500 3.500 0 1 0 0 7 3.500 3.500 0 0 0 0-7Z" fill="currentColor"/></symbol>
+ <symbol id="i-info" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm-1 5h2v2h-2V7Zm0 4h2v6h-2v-6Z" fill="currentColor"/></symbol>
+ <symbol id="i-back" viewBox="0 0 24 24"><path d="M15.400 4.600 8 12l7.400 7.400 1.400-1.400-6-6 6-6-1.400-1.400Z" fill="currentColor"/></symbol>
+ <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M17.700 6.300A8 8 0 1 0 20 12h-2a6 6 0 1 1-1.800-4.200L13 11h7V4l-2.300 2.300Z" fill="currentColor"/></symbol>
+ <symbol id="i-search" viewBox="0 0 24 24"><path d="M10 3a7 7 0 0 1 5.600 11.200l5.100 5.100-1.400 1.400-5.100-5.100A7 7 0 1 1 10 3Zm0 2a5 5 0 1 0 0 10 5 5 0 0 0 0-10Z" fill="currentColor"/></symbol>
+ <symbol id="i-users" viewBox="0 0 24 24"><path d="M9 4a4 4 0 1 1 0 8 4 4 0 0 1 0-8Zm7.500 1a3.500 3.500 0 0 1 0 7v-2a1.500 1.500 0 0 0 0-3V5ZM9 14c4 0 7 2 7 5v1H2v-1c0-3 3-5 7-5Zm8.400.200C20 14.800 22 16.500 22 19v1h-4v-1c0-1.900-.2-3.400-.6-4.800Z" fill="currentColor"/></symbol>
+ <symbol id="i-pause" viewBox="0 0 24 24"><path d="M6 4h4v16H6V4Zm8 0h4v16h-4V4Z" fill="currentColor"/></symbol>
+ <symbol id="i-map" viewBox="0 0 24 24"><path d="M9 3 3 5v16l6-2 6 2 6-2V3l-6 2-6-2Zm1 2.400 4 1.300v11.900l-4-1.300V5.400ZM5 6.400l3-1v11.900l-3 1V6.400Zm11 .300 3-1v11.900l-3 1V6.700Z" fill="currentColor"/></symbol>
+ <symbol id="i-list" viewBox="0 0 24 24"><path d="M3 5h18v2H3V5Zm0 6h18v2H3v-2Zm0 6h18v2H3v-2Z" fill="currentColor"/></symbol>
+ <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 3h16a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H9l-5 4v-4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" fill="currentColor"/></symbol>
+ <symbol id="i-swap" viewBox="0 0 24 24"><path d="M7 4 2 9l5 5v-4h8V8H7V4Zm10 6v4H9v2h8v4l5-5-5-5Z" fill="currentColor"/></symbol>
+</svg>
+
+<canvas id="game" aria-label="OpenSpades game view"></canvas>
+<canvas id="hud" aria-hidden="true"></canvas>
+
+<!-- ===== Main menu: three screens (home, servers, quick connect) ===== -->
+<main id="menu">
+ <section class="screen" id="screen-home" aria-label="Main menu">
+  <div class="home-brand">
+   <img class="logo" src="assets/Gfx/Title/Logo.png" alt="OpenSpades" width="512" height="128">
+   <p class="tagline">Voxel combat. Build, dig, fight.</p>
+   <p class="home-player">Playing as <button type="button" class="link" id="home-name">Deuce</button></p>
+   <div id="boot-status" class="boot-status" role="status">Loading OpenSpades…</div>
+  </div>
+  <nav class="home-actions" aria-label="Main menu">
+   <button type="button" class="tile primary" id="nav-servers"><svg><use href="#i-play"/></svg><span><b>Play Online</b><small>Browse public servers</small></span></button>
+   <button type="button" class="tile" id="practice" disabled><svg><use href="#i-target"/></svg><span><b>Practice</b><small>Offline vs bots</small></span></button>
+   <button type="button" class="tile" id="nav-quick"><svg><use href="#i-link"/></svg><span><b>Quick Connect</b><small>Join by address</small></span></button>
+   <div class="tile-row">
+    <button type="button" class="tile small" id="setup"><svg><use href="#i-gear"/></svg><span><b>Settings</b></span></button>
+    <button type="button" class="tile small" id="credits"><svg><use href="#i-info"/></svg><span><b>Credits</b></span></button>
+   </div>
+  </nav>
+ </section>
+
+ <section class="screen" id="screen-servers" hidden aria-label="Server browser">
+  <header class="bar">
+   <button type="button" class="icon-btn" data-nav="home" aria-label="Back"><svg><use href="#i-back"/></svg></button>
+   <h1>Servers <span id="server-count" class="count"></span></h1>
+   <label class="search"><svg><use href="#i-search"/></svg><input id="filter-text" type="search" placeholder="Search servers, maps, modes" spellcheck="false" autocomplete="off" aria-label="Filter servers"></label>
+   <button type="button" class="icon-btn" id="refresh" aria-label="Refresh server list"><svg><use href="#i-refresh"/></svg></button>
+  </header>
+  <div class="chips" role="toolbar" aria-label="Server filters">
+   <button type="button" class="chip" id="filter-3">0.75</button>
+   <button type="button" class="chip" id="filter-4">0.76</button>
+   <button type="button" class="chip" id="filter-empty">Has players</button>
+   <button type="button" class="chip" id="filter-full">Not full</button>
+   <label class="sort">Sort <select id="sort-select" aria-label="Sort servers"><option value="players">Players</option><option value="name">Name</option><option value="map">Map</option><option value="mode">Mode</option><option value="country">Region</option></select></label>
+  </div>
+  <div id="server-list" class="server-list" role="listbox" aria-label="Server list"></div>
+  <div id="list-status" class="list-status"></div>
+  <footer class="join-bar" id="join-bar" hidden>
+   <div class="join-info"><b id="join-name"></b><small id="join-detail"></small></div>
+   <button type="button" class="btn primary big" id="join-selected">Join</button>
+  </footer>
+ </section>
+
+ <section class="screen" id="screen-quick" hidden aria-label="Quick connect">
+  <header class="bar">
+   <button type="button" class="icon-btn" data-nav="home" aria-label="Back"><svg><use href="#i-back"/></svg></button>
+   <h1>Quick Connect</h1>
+  </header>
+  <form class="card narrow" id="quick-form" autocomplete="off">
+   <label class="field-label" for="server-address">Server address</label>
+   <input id="server-address" class="input" placeholder="aos://1234567890:32887 or host:port" spellcheck="false" autocapitalize="off" autocomplete="off" inputmode="url" enterkeyhint="go">
+   <span class="field-label">Protocol version</span>
+   <div class="segmented" role="group" aria-label="Protocol version">
+    <button class="seg" id="proto-3" type="button">0.75</button><button class="seg" id="proto-4" type="button">0.76</button>
+   </div>
+   <button class="btn primary big wide" id="connect" type="submit" disabled>Connect</button>
+   <p class="hint">Tip: tap a server in <b>Play Online</b> to fill this in automatically.</p>
+  </form>
+ </section>
+</main>
+
+<!-- ===== Overlays ===== -->
+<div id="dialog-layer" hidden>
+ <section id="setup-dialog" class="sheet full" hidden aria-label="Settings">
+  <header class="bar">
+   <button type="button" class="icon-btn" id="setup-close" aria-label="Done"><svg><use href="#i-back"/></svg></button>
+   <h1>Settings</h1>
+   <nav class="tabs" role="tablist">
+    <button type="button" role="tab" data-tab="player" aria-selected="true">Player</button>
+    <button type="button" role="tab" data-tab="controls">Controls</button>
+    <button type="button" role="tab" data-tab="video">Video &amp; Audio</button>
+    <button type="button" role="tab" data-tab="game">Game</button>
+   </nav>
+  </header>
+  <div class="settings-body">
+   <div class="settings-group" data-panel="player">
+    <label class="setting"><span>Player name<small>Shown to other players. Up to 15 characters.</small></span><input id="player-name" class="input" maxlength="15" autocomplete="nickname" spellcheck="false" value="Deuce" enterkeyhint="done"></label>
+   </div>
+   <div class="settings-group" data-panel="controls" hidden>
+    <label class="setting"><span>Look sensitivity<small id="sensitivity-value">1.0×</small></span><input id="sensitivity" type="range" min="0.3" max="2.5" value="1" step="0.1"></label>
+    <label class="setting"><span>Invert vertical look</span><input id="invert-y" type="checkbox" class="switch"></label>
+    <label class="setting"><span>Button size<small>Size of the on-screen controls</small></span><select id="hud-size" class="input"><option value="0.85">Small</option><option value="1" selected>Normal</option><option value="1.15">Large</option><option value="1.3">Extra large</option></select></label>
+    <label class="setting"><span>Button opacity<small id="hud-opacity-value">80%</small></span><input id="hud-opacity" type="range" min="0.3" max="1" value="0.8" step="0.05"></label>
+    <label class="setting"><span>Left-handed layout<small>Joystick on the right, actions on the left</small></span><input id="left-handed" type="checkbox" class="switch"></label>
+    <label class="setting"><span>Auto-sprint<small>Push the joystick fully forward to sprint</small></span><input id="auto-sprint" type="checkbox" class="switch" checked></label>
+    <label class="setting"><span>Toggle crouch<small>Tap once to crouch, again to stand</small></span><input id="toggle-crouch" type="checkbox" class="switch" checked></label>
+    <label class="setting"><span>Vibration<small>Haptic feedback for hits and damage</small></span><input id="haptics" type="checkbox" class="switch" checked></label>
+    <label class="setting"><span>Touch controls<small>Turn off when using a keyboard and mouse</small></span><select id="touch-mode" class="input"><option value="auto">Automatic</option><option value="on">On</option><option value="off">Off</option></select></label>
+   </div>
+   <div class="settings-group" data-panel="video" hidden>
+    <label class="setting"><span>Graphics quality<small>Lower settings save battery</small></span><select id="quality" class="input"><option value="low">Low (battery saver)</option><option value="medium" selected>Medium</option><option value="high">High (shadows)</option></select></label>
+    <label class="setting"><span>Sound volume<small id="volume-value">55%</small></span><input id="volume" type="range" min="0" max="1" value="0.55" step="0.05"></label>
+   </div>
+   <div class="settings-group" data-panel="game" hidden>
+    <label class="setting"><span>Practice opponents<small>Bots in offline practice</small></span><select id="bots" class="input"><option value="0">None (sandbox)</option><option value="3">3</option><option value="6" selected>6</option><option value="10">10</option></select></label>
+    <div class="setting" id="privacy-row" hidden><span>Privacy &amp; ad choices<small>Change how ads may use your data</small></span><button type="button" class="btn" id="privacy-options">Manage</button></div>
+   </div>
+  </div>
+ </section>
+
+ <section id="game-menu" class="sheet center" hidden aria-label="Paused">
+  <h2 class="sheet-title"><svg><use href="#i-pause"/></svg> Paused</h2>
+  <p class="sheet-note" id="menu-note">The match keeps running while this menu is open.</p>
+  <button class="btn primary big wide" id="menu-back" type="button">Resume</button>
+  <div class="btn-grid">
+   <button class="btn" id="menu-loadout" type="button">Change Loadout</button>
+   <button class="btn" id="menu-chatlog" type="button">Chat Log</button>
+   <button class="btn" id="menu-setup" type="button">Settings</button>
+   <button class="btn" id="menu-screenshot" type="button">Screenshot</button>
+   <button class="btn" id="menu-save-map" type="button">Save Map</button>
+   <button class="btn danger" id="menu-disconnect" type="button">Disconnect</button>
+  </div>
+ </section>
+
+ <section id="chat-log" class="sheet full" hidden aria-label="Chat log">
+  <header class="bar">
+   <button type="button" class="icon-btn" id="chat-log-close" aria-label="Close"><svg><use href="#i-back"/></svg></button>
+   <h1>Chat Log</h1>
+  </header>
+  <div id="chat-log-lines" class="chat-log-lines"></div>
+ </section>
+
+ <form id="name-dialog" class="sheet center" hidden aria-label="Choose a name" autocomplete="off">
+  <h2 class="sheet-title">Choose a Name</h2>
+  <p class="sheet-note">Pick the name other players will see.</p>
+  <input id="name-input" class="input big" maxlength="15" autocomplete="nickname" spellcheck="false" placeholder="Your name" enterkeyhint="go">
+  <p id="name-error" class="name-error" hidden>Enter a name (letters, numbers and symbols, up to 15 characters).</p>
+  <div class="btn-row"><button class="btn" id="name-cancel" type="button">Cancel</button><button class="btn primary" id="name-ok" type="submit">Connect</button></div>
+ </form>
+
+ <section id="message-box" class="sheet center" hidden role="alertdialog">
+  <h2 id="message-title" class="sheet-title">Disconnected</h2><p id="message-text" class="sheet-note"></p>
+  <button class="btn primary big wide" id="message-ok" type="button">OK</button>
+ </section>
+
+ <section id="credits-dialog" class="sheet full" hidden aria-label="Credits">
+  <header class="bar">
+   <button type="button" class="icon-btn" id="credits-close" aria-label="Close"><svg><use href="#i-back"/></svg></button>
+   <h1>Credits &amp; Licenses</h1>
+  </header>
+  <pre id="credits-doc" class="credits-doc" hidden></pre>
+  <div class="credits-body" id="credits-main">
+   <img class="logo small" src="assets/Gfx/Title/Logo.png" alt="OpenSpades" width="256" height="64">
+   <p>OpenSpades Mobile is an Android port of the <b>OpenSpades</b> web client. The original C++ gameplay core (player movement, collision, weapons, hitscan, grenades, voxel map and structural collapse) runs as WebAssembly. Multiplayer uses the original ENet protocol over the phone's own UDP network — no relay server is involved.</p>
+   <h3>Credits</h3>
+   <ul>
+    <li><a href="https://github.com/yvt/openspades">OpenSpades</a> by yvt and contributors — GPL-3.0-or-later. <a href="OPENSPADES-LICENSE.txt">License text</a>.</li>
+    <li>Ace of Spades protocol and gameplay, with code derived from pysnip by Mathias Kaerlev.</li>
+    <li><a href="https://threejs.org/">Three.js</a> 0.170.0 — MIT. <a href="vendor/THREE-LICENSE.txt">License text</a>.</li>
+    <li><a href="http://enet.bespin.org/">ENet</a> by Lee Salzman — MIT.</li>
+    <li>Ads are served by the <a href="https://developers.google.com/admob/android">Google Mobile Ads SDK</a> and consent is managed by Google's User Messaging Platform (both proprietary Google Play services libraries, not part of the GPL source). <a href="https://openspadesweb.app/privacy/">Privacy policy</a>.</li>
+    <li>Server list provided by <a href="https://buildandshoot.com/">Build and Shoot</a>.</li>
+   </ul>
+   <h3>Game assets</h3>
+   <p>Models, sounds and fonts come from the official OpenSpades 0.1.3 release and keep their original licenses. <a href="assets/License/Credits-pak000-Nonfree.md">Nonfree pack credits</a> · <a href="assets/License/Credits-pak010-BaseSkin.md">Base skin credits</a></p>
+   <h3>Source code</h3>
+   <p>This app is free software under the GNU GPL v3 or later. Source code: <a href="https://github.com/SgtMetz/openspades-web">github.com/SgtMetz/openspades-web</a>.</p>
+   <h3>Privacy</h3>
+   <p>The app has no accounts, ads or analytics. It contacts the Build and Shoot server list and the game servers you choose to join; those servers see your IP address and player name.</p>
+  </div>
+ </section>
+</div>
+
+<!-- ===== In-game chat (docked at the top so the keyboard doesn't cover it) ===== -->
+<form id="chat-form" class="chat-say" hidden>
+ <div class="segmented small" role="group" aria-label="Chat channel"><button class="seg" id="chat-global" type="button">All</button><button class="seg" id="chat-team" type="button">Team</button></div>
+ <input id="chat-input" class="input" maxlength="90" autocomplete="off" spellcheck="false" placeholder="Say something…" aria-label="Chat text" enterkeyhint="send">
+ <button class="btn primary" type="submit">Send</button><button class="btn" id="chat-cancel" type="button">✕</button>
+</form>
+
+<!-- ===== Team / weapon selection ===== -->
+<section id="mobile-limbo" hidden aria-label="Choose team and weapon">
+ <div class="mobile-selection-header"><h2>Choose your loadout</h2><button type="button" class="icon-btn" id="mobile-limbo-menu" aria-label="Menu"><svg><use href="#i-pause"/></svg></button></div>
+ <div id="mobile-teams"><p>Team</p><div class="mobile-options teams"><button type="button" data-team="0" class="team-blue">Blue</button><button type="button" data-team="1" class="team-green">Green</button><button type="button" data-team="2">Spectator</button></div></div>
+ <div id="mobile-weapons"><p>Weapon</p><div class="mobile-options weapons">
+  <button type="button" data-weapon="0"><b>Rifle</b><small>High damage · 10 rounds</small></button>
+  <button type="button" data-weapon="1"><b>SMG</b><small>Fast fire · 30 rounds</small></button>
+  <button type="button" data-weapon="2"><b>Shotgun</b><small>Close range · 6 shells</small></button>
+ </div></div>
+ <button type="button" id="mobile-spawn">Spawn</button>
+</section>
+
+<!-- ===== Touch controls ===== -->
+<div id="touch-controls" hidden aria-label="Touch game controls">
+ <div class="touch-top">
+  <button type="button" data-action="menu" aria-label="Pause"><svg><use href="#i-pause"/></svg></button>
+  <button type="button" data-action="KeyM" aria-label="Map"><svg><use href="#i-map"/></svg></button>
+  <button type="button" data-key="Tab" aria-label="Scores"><svg><use href="#i-list"/></svg></button>
+  <button type="button" data-action="KeyT" class="online-only" aria-label="Chat"><svg><use href="#i-chat"/></svg></button>
+  <button type="button" data-action="Period" aria-label="Loadout"><svg><use href="#i-swap"/></svg></button>
+ </div>
+ <div id="touch-stick" aria-label="Movement joystick"><span id="touch-knob"></span></div>
+ <div class="touch-tools" aria-label="Select tool">
+  <button type="button" data-action="Digit1">Spade</button><button type="button" data-action="Digit2">Block</button><button type="button" data-action="Digit3">Gun</button><button type="button" data-action="Digit4">Nade</button>
+ </div>
+ <div class="touch-actions">
+  <button type="button" data-mouse="1" data-look class="touch-fire" aria-label="Fire or use">FIRE</button>
+  <button type="button" data-mouse="2" data-look class="touch-aim" aria-label="Aim or alternate use">AIM</button>
+  <button type="button" data-key="Space" class="touch-jump">JUMP</button>
+  <button type="button" data-key="ControlLeft" class="touch-crouch">CROUCH</button>
+  <button type="button" data-action="KeyR" class="touch-reload">RELOAD</button>
+  <button type="button" data-key="ShiftLeft" class="touch-sprint">SPRINT</button>
+ </div>
+ <div class="touch-fire-left"><button type="button" data-mouse="1" data-look aria-label="Fire">FIRE</button></div>
+ <div class="touch-extra"><button type="button" data-action="KeyE">Resupply</button><button type="button" data-action="ArrowLeft" aria-label="Previous color">◀</button><button type="button" data-action="ArrowRight" aria-label="Next color">Color ▶</button></div>
+</div>
+<script type="module" src="main.js"></script>
+</body></html>
