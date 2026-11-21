@@ -174,17 +174,21 @@ namespace osweb {
 		       "precision highp samplerCube;\n";
 		if (stage == ShaderStage::Fragment) out << "layout(location = 0) out highp vec4 os_FragColor;\n";
 
+		// Global uniform/in/out declarations are hoisted above all code. Each source object declares
+		// its own varyings between functions; some mobile drivers (Samsung Xclipse via Firefox) then
+		// reject the merged stage with "undeclared identifier" on varyings assigned in later units.
+		std::ostringstream body;
 		std::set<std::string> globals; // depth-0 global declarations already emitted
 		for (size_t index = 0; index < sources.size(); ++index) {
 			std::string text = TranslateTokens(stage, StripComments(sources[index]));
 			std::istringstream lines(text);
 			std::string line;
 			int ppDepth = 0, braces = 0, parens = 0;
-			out << "#line 1 " << index + 1 << "\n";
+			body << "#line 1 " << index + 1 << "\n";
 			while (std::getline(lines, line)) {
 				std::string directive = DirectiveName(line);
 				if (directive == "version" || directive == "extension") {
-					out << "\n";
+					body << "\n";
 					continue;
 				}
 				if (directive == "if" || directive == "ifdef" || directive == "ifndef") ++ppDepth;
@@ -196,7 +200,8 @@ namespace osweb {
 					if ((StartsWithWord(t, "uniform") || StartsWithWord(t, "in") ||
 					     StartsWithWord(t, "out")) &&
 					    !t.empty() && t.back() == ';' && t.find('(') == std::string::npos) {
-						drop = !globals.insert(t).second;
+						if (globals.insert(t).second) out << t << "\n";
+						drop = true;
 					}
 				}
 				if (directive.empty()) {
@@ -207,9 +212,10 @@ namespace osweb {
 						if (c == ')') --parens;
 					}
 				}
-				out << (drop ? std::string() : line) << "\n";
+				body << (drop ? std::string() : line) << "\n";
 			}
 		}
+		out << body.str();
 		return out.str();
 	}
 } // namespace osweb
